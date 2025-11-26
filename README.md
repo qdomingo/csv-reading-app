@@ -47,5 +47,59 @@ Este proyecto es una aplicación web para visualizar y analizar datos de uso de 
 - Los IDEs se agrupan por nombre base (sin versión) en las gráficas y filtros.
 - Los archivos subidos se almacenan temporalmente en `/backend/uploads` (ignorado por git).
 
+## Despliegue en Heroku
+
+Puedes desplegar la aplicación en Heroku siguiendo estos pasos:
+
+### 1. Prepara el proyecto
+
+- Asegúrate de que el backend y el frontend estén en carpetas separadas (`/backend` y `/frontend`).
+- El backend debe estar listo para producción (por ejemplo, usando variables de entorno para la configuración).
+- El frontend debe compilarse en modo producción (`npm run build` en `/frontend`).
+
+### 2. Configura el backend para servir el frontend
+
+- Copia la carpeta `build` generada por React (`/frontend/build`) dentro de `/backend` o configura el backend para servir archivos estáticos desde esa carpeta.
+- En tu archivo principal de Express (por ejemplo, `index.js` o `app.js`), agrega algo como:
+
+  ```js
+  // ...existing code...
+  const path = require('path');
+  app.use(express.static(path.join(__dirname, 'build')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
+  });
+  // ...existing code...
+  ```
+
+### 3. Crea un repositorio Git y sube a Heroku
+
+- Desde la raíz del proyecto (donde está la carpeta `/backend`):
+
+  ```bash
+  cd backend
+  git init
+  heroku create nombre-de-tu-app
+  git add .
+  git commit -m "Deploy app"
+  git push heroku master
+  ```
+
+- Asegúrate de tener un archivo `Procfile` en `/backend` con el siguiente contenido:
+
+  ```
+  web: node index.js
+  ```
+
+  (Reemplaza `index.js` por el nombre de tu archivo principal si es diferente.)
+
+### 4. Configura variables de entorno en Heroku
+
+- Usa el dashboard de Heroku o el CLI para añadir variables necesarias (por ejemplo, `PORT`, etc.).
+
+### 5. Accede a tu aplicación
+
+- Una vez desplegada, Heroku te dará una URL pública para acceder a tu dashboard.
+
 ## Licencia
 MIT
