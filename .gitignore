@@ -1,0 +1,36 @@
+# Node.js
+node_modules/
+.env
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs
+*.log
+
+# Build output
+/dist
+/build
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# React
+frontend/node_modules/
+frontend/build/
+frontend/.env
+
+# Backend
+backend/node_modules/
+backend/uploads/
+backend/.env
+
+# Misc
+*.local
+*.cache
+.idea/
