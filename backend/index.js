@@ -1,22 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import xlsx from 'xlsx';
+import { parse } from 'csv-parse';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const upload = multer({ dest: 'uploads/' });
-
-app.get('/', (req, res) => {
-  res.send('Backend funcionando');
-});
-
-
-import fs from 'fs';
-import path from 'path';
-import xlsx from 'xlsx';
-import { parse } from 'csv-parse';
 
 // Endpoint para subir archivo
 app.post('/api/upload', upload.single('file'), (req, res) => {
@@ -94,14 +88,12 @@ app.get('/api/read/:filename', (req, res) => {
   }
 });
 
-
 // Servir frontend en producción
-import path from 'path';
 const __dirname = path.resolve();
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  app.use(express.static(path.join(__dirname, 'build')));
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
   });
 }
 

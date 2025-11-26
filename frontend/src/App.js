@@ -4,6 +4,22 @@ import './App.css';
 import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+// Etiqueta personalizada: valor y porcentaje juntos al final de la línea de la porción, en blanco
+const renderCustomLabel = (data, total) => ({ cx, cy, midAngle, outerRadius, percent, index }) => {
+  const RADIAN = Math.PI / 180;
+  const value = data[index]?.value || 0;
+  const label = `${value} (${(percent * 100).toFixed(1)}%)`;
+  // Posición al final de la línea
+  const radius = outerRadius + 24;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text x={x} y={y} fill="#fff" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={15} fontWeight={700}>
+      {label}
+    </text>
+  );
+};
+
 
 function App() {
   const [file, setFile] = useState(null);
@@ -146,6 +162,11 @@ function App() {
 
   const pieColors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#d0ed57'];
 
+
+  // Calcular totales para las gráficas
+  const totalIde = pieIdeData.reduce((acc, cur) => acc + cur.value, 0);
+  const totalActivity = pieActivityData.reduce((acc, cur) => acc + cur.value, 0);
+
   return (
     <div style={{ maxWidth: 1100, margin: '2rem auto', fontFamily: 'sans-serif' }}>
       <div className="app-title">Análisis Uso Copilot</div>
@@ -168,11 +189,19 @@ function App() {
 
       {data.length > 0 && (
         <div style={{ display: 'flex', gap: 40, flexWrap: 'wrap', marginBottom: 30 }}>
-          <div style={{ flex: 1, minWidth: 320, height: 350 }}>
+          <div style={{ flex: 1, minWidth: 320, height: 370 }}>
             <h2 style={{ textAlign: 'center' }}>Distribución de IDEs usados</h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie data={pieIdeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>
+                <Pie
+                  data={pieIdeData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  label={renderCustomLabel(pieIdeData, totalIde)}
+                >
                   {pieIdeData.map((entry, idx) => (
                     <Cell key={`cell-ide-${idx}`} fill={pieColors[idx % pieColors.length]} />
                   ))}
@@ -181,12 +210,23 @@ function App() {
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
+            <div style={{ textAlign: 'center', marginTop: 8, fontWeight: 600 }}>
+              Total: {totalIde}
+            </div>
           </div>
-          <div style={{ flex: 1, minWidth: 320, height: 350 }}>
+          <div style={{ flex: 1, minWidth: 320, height: 370 }}>
             <h2 style={{ textAlign: 'center' }}>Actividad de usuarios por periodo</h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie data={pieActivityData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>
+                <Pie
+                  data={pieActivityData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  label={renderCustomLabel(pieActivityData, totalActivity)}
+                >
                   {pieActivityData.map((entry, idx) => (
                     <Cell key={`cell-act-${idx}`} fill={pieColors[idx % pieColors.length]} />
                   ))}
@@ -195,6 +235,9 @@ function App() {
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
+            <div style={{ textAlign: 'center', marginTop: 8, fontWeight: 600 }}>
+              Total: {totalActivity}
+            </div>
           </div>
         </div>
       )}
