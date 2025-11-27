@@ -78,11 +78,13 @@ function App() {
   let pieIdeData = [];
   let ideOptions = [];
   if (data.length > 0) {
-    // Agrupar IDEs por nombre base (sin versión)
+    // Agrupar IDEs por nombre base (sin versión), y todos los JetBrains como 'jetbrains'
     const getIdeBase = (ide) => {
       if (!ide) return 'Desconocido';
       const parts = ide.split('/');
-      return parts[0].toLowerCase();
+      let base = parts[0].toLowerCase();
+      if (base.startsWith('jetbrains')) return 'jetbrains';
+      return base;
     };
     const ideCount = {};
     data.forEach(row => {
