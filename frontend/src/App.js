@@ -74,18 +74,19 @@ function App() {
   };
 
 
+  // --- Función para agrupar IDEs por nombre base (sin versión), y todos los JetBrains como 'jetbrains'
+  const getIdeBase = (ide) => {
+    if (!ide) return 'Desconocido';
+    const parts = ide.split('/');
+    let base = parts[0].toLowerCase();
+    if (base.startsWith('jetbrains')) return 'jetbrains';
+    return base;
+  };
+
   // --- Gráfica de IDEs usados (last surface used) ---
   let pieIdeData = [];
   let ideOptions = [];
   if (data.length > 0) {
-    // Agrupar IDEs por nombre base (sin versión), y todos los JetBrains como 'jetbrains'
-    const getIdeBase = (ide) => {
-      if (!ide) return 'Desconocido';
-      const parts = ide.split('/');
-      let base = parts[0].toLowerCase();
-      if (base.startsWith('jetbrains')) return 'jetbrains';
-      return base;
-    };
     const ideCount = {};
     data.forEach(row => {
       const ideRaw = row['last surface used'] || 'Desconocido';
@@ -132,11 +133,8 @@ function App() {
   }
 
   // --- Filtros y tabla ---
-  const getIdeBase = (ide) => {
-    if (!ide) return 'Desconocido';
-    const parts = ide.split('/');
-    return parts[0].toLowerCase();
-  };
+  // Usar la misma función getIdeBase que arriba para agrupar JetBrains
+  // (No redefinir aquí, usar la de arriba)
   const filteredData = data.filter(row => {
     let ideOk = true, actOk = true, loginOk = true;
     if (ideFilter) ideOk = getIdeBase(row['last surface used']) === ideFilter;
