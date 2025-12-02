@@ -6,6 +6,7 @@ import MenuScreen from './screens/MenuScreen';
 import Pantalla1 from './screens/Pantalla1';
 import Pantalla2 from './screens/Pantalla2';
 import Pantalla3 from './screens/Pantalla3';
+import Pantalla4 from './screens/Pantalla4';
 
 function App() {
   const [pantalla, setPantalla] = useState('menu');
@@ -20,6 +21,7 @@ function App() {
       {pantalla === 'pantalla1' && <Pantalla1 onBack={handleBackToMenu} />}
       {pantalla === 'pantalla2' && <Pantalla2 onBack={handleBackToMenu} />}
       {pantalla === 'pantalla3' && <Pantalla3 onBack={handleBackToMenu} />}
+      {pantalla === 'pantalla4' && <Pantalla4 onBack={handleBackToMenu} />}
     </div>
   );
 }
