@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 function Pantalla4({ onBack }) {
   // Estado para cada archivo y cargado
@@ -11,7 +12,14 @@ function Pantalla4({ onBack }) {
   const [githubData, setGithubData] = useState([]);
   const [licenciasFile, setLicenciasFile] = useState(null);
   const [licenciasLoaded, setLicenciasLoaded] = useState(false);
+  const [licenciasData, setLicenciasData] = useState([]);
   const [numLicenciasAdquiridas, setNumLicenciasAdquiridas] = useState('');
+  
+  // Filtros para la tabla de usuarios agregados
+  const [githubFilter, setGithubFilter] = useState('');
+  const [copilotFilter, setCopilotFilter] = useState('');
+  const [licenciasFilter, setLicenciasFilter] = useState('');
+  const [usuarioSearch, setUsuarioSearch] = useState('');
 
   // Handlers para seleccionar archivo
   const handleCopilotChange = (e) => {
@@ -56,9 +64,33 @@ function Pantalla4({ onBack }) {
     if (e.target.files && e.target.files[0]) {
       setLicenciasFile(e.target.files[0]);
       setLicenciasLoaded(true);
+      // Leer Excel de licencias (hoja O-Licencias) con xlsx
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const data = evt.target.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          // Leer la hoja "O-Licencias"
+          const sheetName = 'O-Licencias';
+          if (workbook.SheetNames.includes(sheetName)) {
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            setLicenciasData(jsonData);
+            console.log('Hoja O-Licencias leída correctamente:', jsonData.length, 'registros');
+          } else {
+            console.warn('Hoja O-Licencias no encontrada. Hojas disponibles:', workbook.SheetNames);
+            setLicenciasData([]);
+          }
+        } catch (error) {
+          console.error('Error al leer Excel:', error);
+          setLicenciasData([]);
+        }
+      };
+      reader.readAsBinaryString(e.target.files[0]);
     } else {
       setLicenciasFile(null);
       setLicenciasLoaded(false);
+      setLicenciasData([]);
     }
   };
 
@@ -77,6 +109,64 @@ function Pantalla4({ onBack }) {
     console.log('Total roles:', allRoles.length, 'Suspended member detectados:', suspendedCount);
     // Contar todas las filas con role definido, excluyendo 'Suspended member'
     githubConsumidas = allRoles.filter(role => role.replace(/\s+/g, '').toLowerCase() !== 'suspendedmember').length;
+  }
+
+  // --- Tabla de Usuarios Agregados ---
+  // Obtener logins de github excluyendo suspended member
+  let githubLogins = [];
+  if (githubLoaded && githubData.length > 0) {
+    githubLogins = githubData.filter(row => {
+      const role = (row.role || row.Role || '').trim();
+      if (!role) return false;
+      return role.replace(/\s+/g, '').toLowerCase() !== 'suspendedmember';
+    }).map(row => (row.login || row.Login || '').trim()).filter(Boolean);
+  }
+  // Obtener logins de copilot
+  let copilotLogins = [];
+  if (copilotLoaded && copilotData.length > 0) {
+    copilotLogins = copilotData.map(row => (row.login || row.Login || '').trim()).filter(Boolean);
+  }
+  // Obtener login_licencias de Excel (solo estado=asignada, convertir mail a usuario_indra)
+  let loginLicencias = [];
+  if (licenciasLoaded && licenciasData.length > 0) {
+    console.log('Total registros en licenciasData:', licenciasData.length);
+    console.log('Primeras 5 filas licenciasData:', licenciasData.slice(0, 5));
+    const filtradas = licenciasData.filter(row => {
+      const estado = (row.Estado || row.estado || row.ESTADO || '').trim().toLowerCase();
+      return estado === 'asignada';
+    });
+    console.log('Registros con estado "asignada":', filtradas.length);
+    console.log('Primeras 5 con estado asignada:', filtradas.slice(0, 5));
+    loginLicencias = filtradas.map(row => {
+      const mail = (row.Mail || row.mail || row.MAIL || '').trim();
+      if (!mail) return '';
+      const usuario = mail.split('@')[0];
+      return usuario ? `${usuario}_indra` : '';
+    }).filter(Boolean);
+    console.log('login_licencias generados:', loginLicencias.length);
+    console.log('Primeros 10 login_licencias:', loginLicencias.slice(0, 10));
+  }
+  // Unir y eliminar duplicados
+  const usuariosAgregados = Array.from(new Set([...githubLogins, ...copilotLogins, ...loginLicencias]));
+
+  // Construir filas para la tabla compleja
+  const tablaUsuarios = usuariosAgregados.map(login => ({
+    usuario: login,
+    github: githubLogins.includes(login) ? 'YES' : 'NO',
+    copilot: copilotLogins.includes(login) ? 'YES' : 'NO',
+    licencias: loginLicencias.includes(login) ? 'YES' : 'NO',
+  }));
+
+  // Filtrar tabla según los filtros seleccionados
+  let tablaUsuariosFiltrada = [];
+  if (githubLoaded && copilotLoaded) {
+    tablaUsuariosFiltrada = tablaUsuarios.filter(row => {
+      const githubOk = githubFilter ? row.github === githubFilter : true;
+      const copilotOk = copilotFilter ? row.copilot === copilotFilter : true;
+      const licenciasOk = licenciasFilter ? row.licencias === licenciasFilter : true;
+      const usuarioOk = usuarioSearch ? row.usuario.toLowerCase().includes(usuarioSearch.toLowerCase()) : true;
+      return githubOk && copilotOk && licenciasOk && usuarioOk;
+    });
   }
 
   return (
@@ -211,6 +301,77 @@ function Pantalla4({ onBack }) {
             </tbody>
           </table>
         </div>
+
+        {/* Tabla de Usuarios Agregados */}
+        {githubLoaded && copilotLoaded && tablaUsuarios.length > 0 && (
+          <div style={{ marginTop: 40 }}>
+            <h3 style={{ color: '#fff', marginBottom: 12 }}>Usuarios Agregados ({tablaUsuariosFiltrada.length})</h3>
+            <div style={{ maxHeight: '500px', overflowY: 'auto', borderRadius: 12 }}>
+              <table className="dashboard-table" style={{ minWidth: 420, background: '#23293a' }}>
+                <thead style={{ position: 'sticky', top: 0, background: '#23293a', zIndex: 1 }}>
+                  <tr>
+                    <th style={{ width: 260 }}>
+                      Usuario Agregado
+                      <input
+                        type="text"
+                        placeholder="Buscar usuario..."
+                        value={usuarioSearch}
+                        onChange={e => setUsuarioSearch(e.target.value)}
+                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.9rem', width: '100%' }}
+                      />
+                    </th>
+                    <th style={{ width: 100 }}>
+                      GitHub
+                      <select
+                        value={githubFilter}
+                        onChange={e => setGithubFilter(e.target.value)}
+                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.9rem', width: '100%' }}
+                      >
+                        <option value="">Todos</option>
+                        <option value="YES">YES</option>
+                        <option value="NO">NO</option>
+                      </select>
+                    </th>
+                    <th style={{ width: 100 }}>
+                      Copilot
+                      <select
+                        value={copilotFilter}
+                        onChange={e => setCopilotFilter(e.target.value)}
+                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.9rem', width: '100%' }}
+                      >
+                        <option value="">Todos</option>
+                        <option value="YES">YES</option>
+                        <option value="NO">NO</option>
+                      </select>
+                    </th>
+                    <th style={{ width: 100 }}>
+                      Licencias
+                      <select
+                        value={licenciasFilter}
+                        onChange={e => setLicenciasFilter(e.target.value)}
+                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.9rem', width: '100%' }}
+                      >
+                        <option value="">Todos</option>
+                        <option value="YES">YES</option>
+                        <option value="NO">NO</option>
+                      </select>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tablaUsuariosFiltrada.map((row, idx) => (
+                    <tr key={row.usuario + idx}>
+                      <td>{row.usuario}</td>
+                      <td>{row.github}</td>
+                      <td>{row.copilot}</td>
+                      <td>{row.licencias}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
