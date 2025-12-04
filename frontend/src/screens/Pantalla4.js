@@ -302,6 +302,83 @@ function Pantalla4({ onBack }) {
           </table>
         </div>
 
+        {/* Tabla Resumen de Combinaciones */}
+        {githubLoaded && copilotLoaded && tablaUsuarios.length > 0 && (
+          <div style={{ marginTop: 40 }}>
+            <h3 style={{ color: '#fff', marginBottom: 12 }}>Resumen de Combinaciones</h3>
+            <table className="dashboard-table" style={{ minWidth: 600, background: '#23293a', marginBottom: 40 }}>
+              <thead>
+                <tr>
+                  <th style={{ width: 340 }}>Descripción</th>
+                  <th style={{ width: 80 }}>Github</th>
+                  <th style={{ width: 80 }}>Copilot</th>
+                  <th style={{ width: 120 }}>Licencias Excel</th>
+                  <th style={{ width: 80 }}>Cuenta</th>
+                  <th style={{ width: 80 }}>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Github, Copilot y Excel</td>
+                  <td>YES</td>
+                  <td>YES</td>
+                  <td>YES</td>
+                  <td>{tablaUsuarios.filter(r => r.github === 'YES' && r.copilot === 'YES' && r.licencias === 'YES').length}</td>
+                  <td style={{ color: '#4caf50', fontWeight: 600 }}>OK</td>
+                </tr>
+                <tr>
+                  <td>Github Copilot pero NO Excel</td>
+                  <td>YES</td>
+                  <td>YES</td>
+                  <td>NO</td>
+                  <td>{tablaUsuarios.filter(r => r.github === 'YES' && r.copilot === 'YES' && r.licencias === 'NO').length}</td>
+                  <td style={{ color: '#ff4444', fontWeight: 600 }}>KO</td>
+                </tr>
+                <tr>
+                  <td>Github Solo Repositorios, NO Excel</td>
+                  <td>YES</td>
+                  <td>NO</td>
+                  <td>NO</td>
+                  <td>{tablaUsuarios.filter(r => r.github === 'YES' && r.copilot === 'NO' && r.licencias === 'NO').length}</td>
+                  <td style={{ color: '#ff4444', fontWeight: 600 }}>KO</td>
+                </tr>
+                <tr>
+                  <td>Github Solo Repositorios y Excel</td>
+                  <td>YES</td>
+                  <td>NO</td>
+                  <td>YES</td>
+                  <td>{tablaUsuarios.filter(r => r.github === 'YES' && r.copilot === 'NO' && r.licencias === 'YES').length}</td>
+                  <td style={{ color: '#4caf50', fontWeight: 600 }}>OK</td>
+                </tr>
+                <tr>
+                  <td>No Github, pero sí Copilot y Excel</td>
+                  <td>NO</td>
+                  <td>YES</td>
+                  <td>YES</td>
+                  <td>{tablaUsuarios.filter(r => r.github === 'NO' && r.copilot === 'YES' && r.licencias === 'YES').length}</td>
+                  <td style={{ color: '#ff4444', fontWeight: 600 }}>KO</td>
+                </tr>
+                <tr>
+                  <td>No Github ni Copilot, pero sí Excel</td>
+                  <td>NO</td>
+                  <td>NO</td>
+                  <td>YES</td>
+                  <td>{tablaUsuarios.filter(r => r.github === 'NO' && r.copilot === 'NO' && r.licencias === 'YES').length}</td>
+                  <td style={{ color: '#ff4444', fontWeight: 600 }}>KO</td>
+                </tr>
+                <tr>
+                  <td>No Github, sí Copilot y No Excel</td>
+                  <td>NO</td>
+                  <td>YES</td>
+                  <td>NO</td>
+                  <td>{tablaUsuarios.filter(r => r.github === 'NO' && r.copilot === 'YES' && r.licencias === 'NO').length}</td>
+                  <td style={{ color: '#ff4444', fontWeight: 600 }}>KO</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
         {/* Tabla de Usuarios Agregados */}
         {githubLoaded && copilotLoaded && tablaUsuarios.length > 0 && (
           <div style={{ marginTop: 40 }}>
