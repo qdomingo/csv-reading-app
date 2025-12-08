@@ -464,7 +464,7 @@ function Pantalla3({ onBack }) {
                     </select>
                   </div>
                 </th>
-                <th style={{ minWidth: 100 }}>
+                <th style={{ minWidth: 85, maxWidth: 85, width: 85, padding: '8px 4px' }}>
                   Estado
                   <div>
                     <select
@@ -477,8 +477,8 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '4px 6px',
-                        fontSize: '0.75rem',
+                        padding: '4px 2px',
+                        fontSize: '0.8rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
@@ -489,7 +489,7 @@ function Pantalla3({ onBack }) {
                     </select>
                   </div>
                 </th>
-                <th style={{ minWidth: 100 }}>
+                <th style={{ minWidth: 90, maxWidth: 90, width: 90, padding: '8px 4px' }}>
                   Fecha alta
                   <div>
                     <input
@@ -505,15 +505,15 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '4px 6px',
-                        fontSize: '0.75rem',
+                        padding: '4px 2px',
+                        fontSize: '0.8rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
                     />
                   </div>
                 </th>
-                <th style={{ minWidth: 95 }}>
+                <th style={{ minWidth: 85, maxWidth: 85, width: 85, padding: '8px 4px' }}>
                   Proyecto
                   <div>
                     <input
@@ -528,8 +528,8 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '4px 6px',
-                        fontSize: '0.75rem',
+                        padding: '4px 2px',
+                        fontSize: '0.8rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
