@@ -31,10 +31,14 @@ function Pantalla3({ onBack }) {
   const [empresaFilter, setEmpresaFilter] = useState('');
   const [licenciaFilter, setLicenciaFilter] = useState('');
   const [estadoFilter, setEstadoFilter] = useState('');
+  const [fechaAltaFilter, setFechaAltaFilter] = useState('');
+  const [proyectoFilter, setProyectoFilter] = useState('');
   const [licenciasUnicas, setLicenciasUnicas] = useState([]);
   const debounceMail = useRef();
   const debounceNombre = useRef();
   const debounceEmpresa = useRef();
+  const debounceFechaAlta = useRef();
+  const debounceProyecto = useRef();
   // No debounce for select filters
 
   // Handler para guardar el archivo seleccionado
@@ -63,26 +67,10 @@ function Pantalla3({ onBack }) {
       // Leer datos, enviando el nombre original como query param
       const readRes = await axios.get(`/api/read/${uploadRes.data.filename}?originalname=${encodeURIComponent(uploadRes.data.originalname)}`);
       let rows = readRes.data.data || [];
-      // Normalizar campos esperados de forma robusta
-      const getField = (row, variants) => {
-        // Busca la clave ignorando mayúsculas, espacios y acentos
-        const normalize = s => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/\s+/g, '').toLowerCase();
-        const keys = Object.keys(row);
-        for (const variant of variants) {
-          const normVariant = normalize(variant);
-          for (const key of keys) {
-            if (normalize(key) === normVariant) return row[key];
-          }
-        }
-        return '';
-      };
-      rows = rows.map(row => ({
-        mail: getField(row, ['Mail']),
-        nombre: getField(row, ['Nombre completo', 'Nombre', 'Nombrecompleto']),
-        empresa: getField(row, ['Empresa']),
-        licencia: getField(row, ['Licencia']),
-        estado: getField(row, ['Estado']),
-      }));
+      console.log('Datos recibidos del Excel:', rows.length, 'filas');
+      console.log('Primera fila:', rows[0]);
+      console.log('Columnas disponibles:', rows[0] ? Object.keys(rows[0]) : []);
+      // Los datos ya vienen normalizados del backend
       setData(rows);
       // Calcular licencias únicas para el selector
       const licencias = Array.from(new Set(rows.map(r => r.licencia).filter(l => l)));
@@ -94,6 +82,45 @@ function Pantalla3({ onBack }) {
     }
   };
 
+  // Función para parsear fecha en formato español (dd/mm/yyyy o variantes)
+  const parseDate = (dateStr) => {
+    if (!dateStr) return null;
+    // Convertir a string si no lo es
+    const str = String(dateStr).trim();
+    if (str === '') return null;
+    
+    // Si es solo un número (serial de Excel), convertirlo a fecha
+    if (/^\d+$/.test(str)) {
+      const excelSerial = parseInt(str, 10);
+      // Validar que sea un número razonable (entre 1 y 100000 aproximadamente)
+      // Excel serial 1 = 1/1/1900, 45981 = aprox 2025
+      if (excelSerial >= 1 && excelSerial <= 100000) {
+        // Convertir serial de Excel a fecha
+        // Excel cuenta desde 1/1/1900, pero tiene un bug: considera 1900 como año bisiesto
+        const excelEpoch = new Date(1899, 11, 30); // 30 de diciembre de 1899
+        const date = new Date(excelEpoch.getTime() + excelSerial * 24 * 60 * 60 * 1000);
+        return date;
+      }
+      return null; // Número fuera de rango razonable
+    }
+    
+    // Formato dd/mm/yyyy o dd-mm-yyyy
+    const match1 = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (match1) {
+      const [, day, month, year] = match1;
+      return new Date(year, month - 1, day);
+    }
+    // Formato yyyy-mm-dd
+    const match2 = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (match2) {
+      const [, year, month, day] = match2;
+      return new Date(year, month - 1, day);
+    }
+    // Intentar Date.parse como fallback
+    const parsed = new Date(str);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   // Filtros reactivos
   const [filteredData, setFilteredData] = useState([]);
   React.useEffect(() => {
@@ -103,8 +130,51 @@ function Pantalla3({ onBack }) {
     if (empresaFilter) filtered = filtered.filter(row => (row.empresa || '').toLowerCase().includes(empresaFilter.toLowerCase()));
     if (licenciaFilter) filtered = filtered.filter(row => (row.licencia || '').toLowerCase().includes(licenciaFilter.toLowerCase()));
     if (estadoFilter) filtered = filtered.filter(row => (row.estado || '').toLowerCase().includes(estadoFilter.toLowerCase()));
+    
+    // Filtro de fecha con comparadores
+    if (fechaAltaFilter) {
+      const trimmed = fechaAltaFilter.trim();
+      // Detectar operador: >, <, >=, <=, = (o sin operador asume =)
+      const operatorMatch = trimmed.match(/^(>=?|<=?|=)?\s*(.+)$/);
+      if (operatorMatch) {
+        const operator = operatorMatch[1] || '=';
+        const dateStr = operatorMatch[2];
+        const targetDate = parseDate(dateStr);
+        
+        if (targetDate) {
+          filtered = filtered.filter(row => {
+            const rowDate = parseDate(row.fechaAlta);
+            if (!rowDate) return false; // Excluir fechas nulas/inválidas durante filtrado
+            
+            switch(operator) {
+              case '>': return rowDate > targetDate;
+              case '>=': return rowDate >= targetDate;
+              case '<': return rowDate < targetDate;
+              case '<=': return rowDate <= targetDate;
+              case '=': 
+              default: 
+                // Comparar solo fecha sin hora
+                return rowDate.toDateString() === targetDate.toDateString();
+            }
+          });
+        }
+      }
+    }
+    
+    if (proyectoFilter) filtered = filtered.filter(row => (row.proyecto || '').toLowerCase().includes(proyectoFilter.toLowerCase()));
+    
+    // Ordenar: fechas válidas primero (más recientes primero), luego nulos/inválidos al final
+    filtered.sort((a, b) => {
+      const dateA = parseDate(a.fechaAlta);
+      const dateB = parseDate(b.fechaAlta);
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return dateB - dateA; // Más reciente primero
+    });
+    
     setFilteredData(filtered);
-  }, [data, mailFilter, nombreFilter, empresaFilter, licenciaFilter, estadoFilter]);
+  }, [data, mailFilter, nombreFilter, empresaFilter, licenciaFilter, estadoFilter, fechaAltaFilter, proyectoFilter]);
 
   // Handlers para los filtros con debounce
   const handleMailFilter = e => {
@@ -129,6 +199,22 @@ function Pantalla3({ onBack }) {
     if (debounceEmpresa.current) clearTimeout(debounceEmpresa.current);
     debounceEmpresa.current = setTimeout(() => {
       setEmpresaFilter(value.trim());
+    }, 500);
+  };
+  const handleFechaAltaFilter = e => {
+    const value = e.target.value;
+    setFechaAltaFilter(value);
+    if (debounceFechaAlta.current) clearTimeout(debounceFechaAlta.current);
+    debounceFechaAlta.current = setTimeout(() => {
+      setFechaAltaFilter(value.trim());
+    }, 500);
+  };
+  const handleProyectoFilter = e => {
+    const value = e.target.value;
+    setProyectoFilter(value);
+    if (debounceProyecto.current) clearTimeout(debounceProyecto.current);
+    debounceProyecto.current = setTimeout(() => {
+      setProyectoFilter(value.trim());
     }, 500);
   };
   // Select directo para licencia y estado
@@ -264,12 +350,13 @@ function Pantalla3({ onBack }) {
       )}
 
       {filteredData.length > 0 && (
-        <div style={{ overflowX: 'auto' }}>
+        <div>
           <h2 style={{ textAlign: 'center', margin: '30px 0 10px 0' }}>Detalle de licencias</h2>
-          <table className="dashboard-table">
+          <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '500px', fontSize: '0.85rem' }}>
+            <table className="dashboard-table">
             <thead>
               <tr>
-                <th style={{ minWidth: 120 }}>
+                <th style={{ minWidth: 180 }}>
                   Mail
                   <div>
                     <input
@@ -284,15 +371,15 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '6px 10px',
-                        fontSize: '0.98rem',
+                        padding: '5px 8px',
+                        fontSize: '0.85rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
                     />
                   </div>
                 </th>
-                <th style={{ minWidth: 120 }}>
+                <th style={{ minWidth: 150 }}>
                   Nombre completo
                   <div>
                     <input
@@ -307,15 +394,15 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '6px 10px',
-                        fontSize: '0.98rem',
+                        padding: '5px 8px',
+                        fontSize: '0.85rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
                     />
                   </div>
                 </th>
-                <th style={{ minWidth: 120 }}>
+                <th style={{ minWidth: 130 }}>
                   Empresa
                   <div>
                     <input
@@ -330,15 +417,15 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '6px 10px',
-                        fontSize: '0.98rem',
+                        padding: '5px 8px',
+                        fontSize: '0.85rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
                     />
                   </div>
                 </th>
-                <th style={{ minWidth: 120 }}>
+                <th style={{ minWidth: 140 }}>
                   Licencia
                   <div>
                     <select
@@ -351,8 +438,8 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '6px 10px',
-                        fontSize: '0.98rem',
+                        padding: '5px 8px',
+                        fontSize: '0.85rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
@@ -364,7 +451,7 @@ function Pantalla3({ onBack }) {
                     </select>
                   </div>
                 </th>
-                <th style={{ minWidth: 120 }}>
+                <th style={{ minWidth: 100 }}>
                   Estado
                   <div>
                     <select
@@ -377,8 +464,8 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '6px 10px',
-                        fontSize: '0.98rem',
+                        padding: '5px 8px',
+                        fontSize: '0.85rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
@@ -387,6 +474,53 @@ function Pantalla3({ onBack }) {
                       <option value="Asignada">Asignada</option>
                       <option value="Cancelada">Cancelada</option>
                     </select>
+                  </div>
+                </th>
+                <th style={{ minWidth: 130 }}>
+                  Fecha alta
+                  <div>
+                    <input
+                      type="text"
+                      value={fechaAltaFilter}
+                      onChange={handleFechaAltaFilter}
+                      placeholder=">dd/mm/yyyy"
+                      title="Ejemplos: >01/01/2024, <31/12/2023, >=15/06/2024, 01/01/2024"
+                      style={{
+                        width: '100%',
+                        marginTop: 6,
+                        background: '#23293a',
+                        color: '#e0e6f3',
+                        border: '1px solid #2b5876',
+                        borderRadius: 6,
+                        padding: '5px 8px',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        transition: 'border 0.2s',
+                      }}
+                    />
+                  </div>
+                </th>
+                <th style={{ minWidth: 120 }}>
+                  Proyecto
+                  <div>
+                    <input
+                      type="text"
+                      value={proyectoFilter}
+                      onChange={handleProyectoFilter}
+                      placeholder="Buscar proyecto..."
+                      style={{
+                        width: '100%',
+                        marginTop: 6,
+                        background: '#23293a',
+                        color: '#e0e6f3',
+                        border: '1px solid #2b5876',
+                        borderRadius: 6,
+                        padding: '5px 8px',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        transition: 'border 0.2s',
+                      }}
+                    />
                   </div>
                 </th>
               </tr>
@@ -399,10 +533,13 @@ function Pantalla3({ onBack }) {
                   <td>{row.empresa}</td>
                   <td>{row.licencia}</td>
                   <td>{row.estado}</td>
+                  <td>{row.fechaAlta}</td>
+                  <td>{row.proyecto}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
