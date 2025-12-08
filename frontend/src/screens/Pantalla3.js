@@ -125,43 +125,56 @@ function Pantalla3({ onBack }) {
   const [filteredData, setFilteredData] = useState([]);
   React.useEffect(() => {
     let filtered = data;
-    if (mailFilter) filtered = filtered.filter(row => (row.mail || '').toLowerCase().includes(mailFilter.toLowerCase()));
-    if (nombreFilter) filtered = filtered.filter(row => (row.nombre || '').toLowerCase().includes(nombreFilter.toLowerCase()));
-    if (empresaFilter) filtered = filtered.filter(row => (row.empresa || '').toLowerCase().includes(empresaFilter.toLowerCase()));
-    if (licenciaFilter) filtered = filtered.filter(row => (row.licencia || '').toLowerCase().includes(licenciaFilter.toLowerCase()));
-    if (estadoFilter) filtered = filtered.filter(row => (row.estado || '').toLowerCase().includes(estadoFilter.toLowerCase()));
+    if (mailFilter) filtered = filtered.filter(row => String(row.mail || '').toLowerCase().includes(mailFilter.toLowerCase()));
+    if (nombreFilter) filtered = filtered.filter(row => String(row.nombre || '').toLowerCase().includes(nombreFilter.toLowerCase()));
+    if (empresaFilter) filtered = filtered.filter(row => String(row.empresa || '').toLowerCase().includes(empresaFilter.toLowerCase()));
+    if (licenciaFilter) filtered = filtered.filter(row => String(row.licencia || '').toLowerCase().includes(licenciaFilter.toLowerCase()));
+    if (estadoFilter) filtered = filtered.filter(row => String(row.estado || '').toLowerCase().includes(estadoFilter.toLowerCase()));
     
     // Filtro de fecha con comparadores
     if (fechaAltaFilter) {
-      const trimmed = fechaAltaFilter.trim();
-      // Detectar operador: >, <, >=, <=, = (o sin operador asume =)
-      const operatorMatch = trimmed.match(/^(>=?|<=?|=)?\s*(.+)$/);
-      if (operatorMatch) {
-        const operator = operatorMatch[1] || '=';
-        const dateStr = operatorMatch[2];
-        const targetDate = parseDate(dateStr);
-        
-        if (targetDate) {
-          filtered = filtered.filter(row => {
-            const rowDate = parseDate(row.fechaAlta);
-            if (!rowDate) return false; // Excluir fechas nulas/inválidas durante filtrado
+      try {
+        const trimmed = fechaAltaFilter.trim();
+        // Detectar operador: >, <, >=, <=, = (o sin operador asume =)
+        const operatorMatch = trimmed.match(/^(>=?|<=?|=)?\s*(.+)$/);
+        if (operatorMatch) {
+          const operator = operatorMatch[1] || '=';
+          const dateStr = operatorMatch[2];
+          
+          // Validar que dateStr tenga formato mínimo antes de parsear
+          if (dateStr && dateStr.length >= 8) { // Mínimo dd/mm/yy = 8 caracteres
+            const targetDate = parseDate(dateStr);
             
-            switch(operator) {
-              case '>': return rowDate > targetDate;
-              case '>=': return rowDate >= targetDate;
-              case '<': return rowDate < targetDate;
-              case '<=': return rowDate <= targetDate;
-              case '=': 
-              default: 
-                // Comparar solo fecha sin hora
-                return rowDate.toDateString() === targetDate.toDateString();
+            if (targetDate) {
+              filtered = filtered.filter(row => {
+                try {
+                  const rowDate = parseDate(row.fechaAlta);
+                  if (!rowDate) return false; // Excluir fechas nulas/inválidas durante filtrado
+                  
+                  switch(operator) {
+                    case '>': return rowDate > targetDate;
+                    case '>=': return rowDate >= targetDate;
+                    case '<': return rowDate < targetDate;
+                    case '<=': return rowDate <= targetDate;
+                    case '=': 
+                    default: 
+                      // Comparar solo fecha sin hora
+                      return rowDate.toDateString() === targetDate.toDateString();
+                  }
+                } catch (err) {
+                  console.warn('Error parsing row date:', row.fechaAlta, err);
+                  return false;
+                }
+              });
             }
-          });
+          }
         }
+      } catch (err) {
+        console.warn('Error in date filter:', fechaAltaFilter, err);
       }
     }
     
-    if (proyectoFilter) filtered = filtered.filter(row => (row.proyecto || '').toLowerCase().includes(proyectoFilter.toLowerCase()));
+    if (proyectoFilter) filtered = filtered.filter(row => String(row.proyecto || '').toLowerCase().includes(proyectoFilter.toLowerCase()));
     
     // Ordenar: fechas válidas primero (más recientes primero), luego nulos/inválidos al final
     filtered.sort((a, b) => {
@@ -352,18 +365,18 @@ function Pantalla3({ onBack }) {
       {filteredData.length > 0 && (
         <div>
           <h2 style={{ textAlign: 'center', margin: '30px 0 10px 0' }}>Detalle de licencias</h2>
-          <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '500px', fontSize: '0.85rem' }}>
+          <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '500px', fontSize: '0.75rem' }}>
             <table className="dashboard-table">
             <thead>
               <tr>
-                <th style={{ minWidth: 180 }}>
+                <th style={{ minWidth: 80, maxWidth: 80, width: 80, padding: '8px 4px' }}>
                   Mail
                   <div>
                     <input
                       type="text"
                       value={mailFilter}
                       onChange={handleMailFilter}
-                      placeholder="Buscar mail..."
+                      placeholder="Mail..."
                       style={{
                         width: '100%',
                         marginTop: 6,
@@ -371,8 +384,8 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '5px 8px',
-                        fontSize: '0.85rem',
+                        padding: '4px 6px',
+                        fontSize: '0.75rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
@@ -386,7 +399,7 @@ function Pantalla3({ onBack }) {
                       type="text"
                       value={nombreFilter}
                       onChange={handleNombreFilter}
-                      placeholder="Buscar nombre..."
+                      placeholder="Nombre..."
                       style={{
                         width: '100%',
                         marginTop: 6,
@@ -394,8 +407,8 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '5px 8px',
-                        fontSize: '0.85rem',
+                        padding: '4px 6px',
+                        fontSize: '0.75rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
@@ -409,7 +422,7 @@ function Pantalla3({ onBack }) {
                       type="text"
                       value={empresaFilter}
                       onChange={handleEmpresaFilter}
-                      placeholder="Buscar empresa..."
+                      placeholder="Empresa..."
                       style={{
                         width: '100%',
                         marginTop: 6,
@@ -417,8 +430,8 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '5px 8px',
-                        fontSize: '0.85rem',
+                        padding: '4px 6px',
+                        fontSize: '0.75rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
@@ -438,8 +451,8 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '5px 8px',
-                        fontSize: '0.85rem',
+                        padding: '4px 6px',
+                        fontSize: '0.75rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
@@ -464,8 +477,8 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '5px 8px',
-                        fontSize: '0.85rem',
+                        padding: '4px 6px',
+                        fontSize: '0.75rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
@@ -476,14 +489,14 @@ function Pantalla3({ onBack }) {
                     </select>
                   </div>
                 </th>
-                <th style={{ minWidth: 130 }}>
+                <th style={{ minWidth: 100 }}>
                   Fecha alta
                   <div>
                     <input
                       type="text"
                       value={fechaAltaFilter}
                       onChange={handleFechaAltaFilter}
-                      placeholder=">dd/mm/yyyy"
+                      placeholder=">dd/mm/yy"
                       title="Ejemplos: >01/01/2024, <31/12/2023, >=15/06/2024, 01/01/2024"
                       style={{
                         width: '100%',
@@ -492,22 +505,22 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '5px 8px',
-                        fontSize: '0.85rem',
+                        padding: '4px 6px',
+                        fontSize: '0.75rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
                     />
                   </div>
                 </th>
-                <th style={{ minWidth: 120 }}>
+                <th style={{ minWidth: 95 }}>
                   Proyecto
                   <div>
                     <input
                       type="text"
                       value={proyectoFilter}
                       onChange={handleProyectoFilter}
-                      placeholder="Buscar proyecto..."
+                      placeholder="Proy..."
                       style={{
                         width: '100%',
                         marginTop: 6,
@@ -515,8 +528,8 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '5px 8px',
-                        fontSize: '0.85rem',
+                        padding: '4px 6px',
+                        fontSize: '0.75rem',
                         outline: 'none',
                         transition: 'border 0.2s',
                       }}
