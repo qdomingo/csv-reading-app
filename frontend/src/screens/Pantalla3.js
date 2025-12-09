@@ -365,11 +365,11 @@ function Pantalla3({ onBack }) {
       {filteredData.length > 0 && (
         <div>
           <h2 style={{ textAlign: 'center', margin: '30px 0 10px 0' }}>Detalle de licencias</h2>
-          <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '500px', fontSize: '0.75rem' }}>
-            <table className="dashboard-table">
+          <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '500px', fontSize: '0.8rem' }}>
+            <table className="dashboard-table" style={{ tableLayout: 'fixed' }}>
             <thead>
               <tr>
-                <th style={{ minWidth: 80, maxWidth: 80, width: 80, padding: '8px 4px' }}>
+                <th style={{ minWidth: '150px', maxWidth: '150px', width: '150px', padding: '8px 4px', boxSizing: 'border-box' }}>
                   Mail
                   <div>
                     <input
@@ -384,15 +384,16 @@ function Pantalla3({ onBack }) {
                         color: '#e0e6f3',
                         border: '1px solid #2b5876',
                         borderRadius: 6,
-                        padding: '4px 6px',
-                        fontSize: '0.75rem',
+                        padding: '4px 2px',
+                        fontSize: '0.8rem',
                         outline: 'none',
                         transition: 'border 0.2s',
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
                 </th>
-                <th style={{ minWidth: 150 }}>
+                <th style={{ minWidth: '150px', maxWidth: '150px', width: '150px', padding: '8px 4px', boxSizing: 'border-box' }}>
                   Nombre completo
                   <div>
                     <input
@@ -408,14 +409,15 @@ function Pantalla3({ onBack }) {
                         border: '1px solid #2b5876',
                         borderRadius: 6,
                         padding: '4px 6px',
-                        fontSize: '0.75rem',
+                        fontSize: '0.8rem',
                         outline: 'none',
                         transition: 'border 0.2s',
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
                 </th>
-                <th style={{ minWidth: 130 }}>
+                <th style={{ minWidth: '130px', maxWidth: '130px', width: '130px', padding: '8px 4px', boxSizing: 'border-box' }}>
                   Empresa
                   <div>
                     <input
@@ -431,14 +433,15 @@ function Pantalla3({ onBack }) {
                         border: '1px solid #2b5876',
                         borderRadius: 6,
                         padding: '4px 6px',
-                        fontSize: '0.75rem',
+                        fontSize: '0.8rem',
                         outline: 'none',
                         transition: 'border 0.2s',
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
                 </th>
-                <th style={{ minWidth: 140 }}>
+                <th style={{ minWidth: '140px', maxWidth: '140px', width: '140px', padding: '8px 4px', boxSizing: 'border-box' }}>
                   Licencia
                   <div>
                     <select
@@ -452,9 +455,10 @@ function Pantalla3({ onBack }) {
                         border: '1px solid #2b5876',
                         borderRadius: 6,
                         padding: '4px 6px',
-                        fontSize: '0.75rem',
+                        fontSize: '0.8rem',
                         outline: 'none',
                         transition: 'border 0.2s',
+                        boxSizing: 'border-box',
                       }}
                     >
                       <option value="">Todas</option>
@@ -464,7 +468,7 @@ function Pantalla3({ onBack }) {
                     </select>
                   </div>
                 </th>
-                <th style={{ minWidth: 85, maxWidth: 85, width: 85, padding: '8px 4px' }}>
+                <th style={{ minWidth: '85px', maxWidth: '85px', width: '85px', padding: '8px 4px', boxSizing: 'border-box' }}>
                   Estado
                   <div>
                     <select
@@ -481,6 +485,7 @@ function Pantalla3({ onBack }) {
                         fontSize: '0.8rem',
                         outline: 'none',
                         transition: 'border 0.2s',
+                        boxSizing: 'border-box',
                       }}
                     >
                       <option value="">Todos</option>
@@ -489,7 +494,7 @@ function Pantalla3({ onBack }) {
                     </select>
                   </div>
                 </th>
-                <th style={{ minWidth: 90, maxWidth: 90, width: 90, padding: '8px 4px' }}>
+                <th style={{ minWidth: '90px', maxWidth: '90px', width: '90px', padding: '8px 4px', boxSizing: 'border-box' }}>
                   Fecha alta
                   <div>
                     <input
@@ -509,11 +514,12 @@ function Pantalla3({ onBack }) {
                         fontSize: '0.8rem',
                         outline: 'none',
                         transition: 'border 0.2s',
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
                 </th>
-                <th style={{ minWidth: 85, maxWidth: 85, width: 85, padding: '8px 4px' }}>
+                <th style={{ minWidth: '85px', maxWidth: '85px', width: '85px', padding: '8px 4px', boxSizing: 'border-box' }}>
                   Proyecto
                   <div>
                     <input
@@ -532,6 +538,7 @@ function Pantalla3({ onBack }) {
                         fontSize: '0.8rem',
                         outline: 'none',
                         transition: 'border 0.2s',
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
@@ -541,7 +548,7 @@ function Pantalla3({ onBack }) {
             <tbody>
               {filteredData.map((row, i) => (
                 <tr key={i}>
-                  <td>{row.mail}</td>
+                  <td style={{ wordBreak: 'break-all', overflowWrap: 'break-word' }}>{row.mail}</td>
                   <td>{row.nombre}</td>
                   <td>{row.empresa}</td>
                   <td>{row.licencia}</td>
