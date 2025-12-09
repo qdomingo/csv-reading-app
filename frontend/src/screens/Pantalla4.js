@@ -382,7 +382,21 @@ function Pantalla4({ onBack }) {
         {/* Tabla de Usuarios Agregados */}
         {githubLoaded && copilotLoaded && tablaUsuarios.length > 0 && (
           <div style={{ marginTop: 40 }}>
-            <h3 style={{ color: '#fff', marginBottom: 12 }}>Usuarios Agregados ({tablaUsuariosFiltrada.length})</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ color: '#fff', margin: 0 }}>Usuarios Agregados ({tablaUsuariosFiltrada.length})</h3>
+              <button
+                onClick={() => {
+                  const ws = XLSX.utils.json_to_sheet(tablaUsuariosFiltrada);
+                  const wb = XLSX.utils.book_new();
+                  XLSX.utils.book_append_sheet(wb, ws, 'Usuarios Agregados');
+                  XLSX.writeFile(wb, `usuarios_agregados_${new Date().toISOString().split('T')[0]}.xlsx`);
+                }}
+                className="upload-btn"
+                style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+              >
+                Exportar a Excel
+              </button>
+            </div>
             <div style={{ maxHeight: '500px', overflowY: 'auto', borderRadius: 12 }}>
               <table className="dashboard-table" style={{ minWidth: 420, background: '#23293a' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#23293a', zIndex: 1 }}>
