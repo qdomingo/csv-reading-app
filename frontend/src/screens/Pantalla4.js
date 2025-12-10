@@ -19,6 +19,7 @@ function Pantalla4({ onBack }) {
   const [githubFilter, setGithubFilter] = useState('');
   const [copilotFilter, setCopilotFilter] = useState('');
   const [licenciasFilter, setLicenciasFilter] = useState('');
+  const [tipoLicenciaFilter, setTipoLicenciaFilter] = useState('');
   const [usuarioSearch, setUsuarioSearch] = useState('');
 
   // Handlers para seleccionar archivo
@@ -146,6 +147,25 @@ function Pantalla4({ onBack }) {
     console.log('login_licencias generados:', loginLicencias.length);
     console.log('Primeros 10 login_licencias:', loginLicencias.slice(0, 10));
   }
+  // Crear mapa de usuario a tipo de licencia
+  const usuarioToLicencia = new Map();
+  if (licenciasLoaded && licenciasData.length > 0) {
+    licenciasData.forEach(row => {
+      const estado = (row.Estado || row.estado || row.ESTADO || '').trim().toLowerCase();
+      if (estado === 'asignada') {
+        const mail = (row.Mail || row.mail || row.MAIL || '').trim();
+        const licencia = (row.Licencia || row.licencia || row.LICENCIA || '').trim();
+        if (mail) {
+          const usuario = mail.split('@')[0];
+          const loginFormateado = usuario ? `${usuario}_indra` : '';
+          if (loginFormateado && licencia) {
+            usuarioToLicencia.set(loginFormateado, licencia);
+          }
+        }
+      }
+    });
+  }
+
   // Unir y eliminar duplicados
   const usuariosAgregados = Array.from(new Set([...githubLogins, ...copilotLogins, ...loginLicencias]));
 
@@ -155,6 +175,7 @@ function Pantalla4({ onBack }) {
     github: githubLogins.includes(login) ? 'YES' : 'NO',
     copilot: copilotLogins.includes(login) ? 'YES' : 'NO',
     licencias: loginLicencias.includes(login) ? 'YES' : 'NO',
+    tipoLicencia: usuarioToLicencia.get(login) || '',
   }));
 
   // Filtrar tabla según los filtros seleccionados
@@ -164,8 +185,9 @@ function Pantalla4({ onBack }) {
       const githubOk = githubFilter ? row.github === githubFilter : true;
       const copilotOk = copilotFilter ? row.copilot === copilotFilter : true;
       const licenciasOk = licenciasFilter ? row.licencias === licenciasFilter : true;
+      const tipoLicenciaOk = tipoLicenciaFilter ? row.tipoLicencia.toLowerCase().includes(tipoLicenciaFilter.toLowerCase()) : true;
       const usuarioOk = usuarioSearch ? row.usuario.toLowerCase().includes(usuarioSearch.toLowerCase()) : true;
-      return githubOk && copilotOk && licenciasOk && usuarioOk;
+      return githubOk && copilotOk && licenciasOk && tipoLicenciaOk && usuarioOk;
     });
   }
 
@@ -397,55 +419,65 @@ function Pantalla4({ onBack }) {
                 Exportar a Excel
               </button>
             </div>
-            <div style={{ maxHeight: '500px', overflowY: 'auto', borderRadius: 12 }}>
+            <div style={{ maxHeight: '500px', overflowY: 'auto', borderRadius: 12, fontSize: '0.85rem' }}>
               <table className="dashboard-table" style={{ minWidth: 420, background: '#23293a' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#23293a', zIndex: 1 }}>
                   <tr>
-                    <th style={{ width: 260 }}>
+                    <th style={{ width: 200, fontSize: '0.85rem' }}>
                       Usuario Agregado
                       <input
                         type="text"
                         placeholder="Buscar usuario..."
                         value={usuarioSearch}
                         onChange={e => setUsuarioSearch(e.target.value)}
-                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.9rem', width: '100%' }}
+                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
                       />
                     </th>
-                    <th style={{ width: 100 }}>
+                    <th style={{ width: 100, fontSize: '0.85rem' }}>
                       GitHub
                       <select
                         value={githubFilter}
                         onChange={e => setGithubFilter(e.target.value)}
-                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.9rem', width: '100%' }}
+                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
                       >
                         <option value="">Todos</option>
                         <option value="YES">YES</option>
                         <option value="NO">NO</option>
                       </select>
                     </th>
-                    <th style={{ width: 100 }}>
+                    <th style={{ width: 100, fontSize: '0.85rem' }}>
                       Copilot
                       <select
                         value={copilotFilter}
                         onChange={e => setCopilotFilter(e.target.value)}
-                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.9rem', width: '100%' }}
+                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
                       >
                         <option value="">Todos</option>
                         <option value="YES">YES</option>
                         <option value="NO">NO</option>
                       </select>
                     </th>
-                    <th style={{ width: 100 }}>
+                    <th style={{ width: 100, fontSize: '0.85rem' }}>
                       Licencias
                       <select
                         value={licenciasFilter}
                         onChange={e => setLicenciasFilter(e.target.value)}
-                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.9rem', width: '100%' }}
+                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
                       >
                         <option value="">Todos</option>
                         <option value="YES">YES</option>
                         <option value="NO">NO</option>
                       </select>
+                    </th>
+                    <th style={{ width: 150, fontSize: '0.85rem' }}>
+                      Tipo Licencia
+                      <input
+                        type="text"
+                        placeholder="Buscar licencia..."
+                        value={tipoLicenciaFilter}
+                        onChange={e => setTipoLicenciaFilter(e.target.value)}
+                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
+                      />
                     </th>
                   </tr>
                 </thead>
@@ -456,6 +488,7 @@ function Pantalla4({ onBack }) {
                       <td>{row.github}</td>
                       <td>{row.copilot}</td>
                       <td>{row.licencias}</td>
+                      <td>{row.tipoLicencia}</td>
                     </tr>
                   ))}
                 </tbody>
