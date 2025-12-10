@@ -147,8 +147,9 @@ function Pantalla4({ onBack }) {
     console.log('login_licencias generados:', loginLicencias.length);
     console.log('Primeros 10 login_licencias:', loginLicencias.slice(0, 10));
   }
-  // Crear mapa de usuario a tipo de licencia
+  // Crear mapa de usuario a tipo de licencia y mail
   const usuarioToLicencia = new Map();
+  const usuarioToMail = new Map();
   if (licenciasLoaded && licenciasData.length > 0) {
     licenciasData.forEach(row => {
       const estado = (row.Estado || row.estado || row.ESTADO || '').trim().toLowerCase();
@@ -158,8 +159,11 @@ function Pantalla4({ onBack }) {
         if (mail) {
           const usuario = mail.split('@')[0];
           const loginFormateado = usuario ? `${usuario}_indra` : '';
-          if (loginFormateado && licencia) {
-            usuarioToLicencia.set(loginFormateado, licencia);
+          if (loginFormateado) {
+            if (licencia) {
+              usuarioToLicencia.set(loginFormateado, licencia);
+            }
+            usuarioToMail.set(loginFormateado, mail);
           }
         }
       }
@@ -176,6 +180,7 @@ function Pantalla4({ onBack }) {
     copilot: copilotLogins.includes(login) ? 'YES' : 'NO',
     licencias: loginLicencias.includes(login) ? 'YES' : 'NO',
     tipoLicencia: usuarioToLicencia.get(login) || '',
+    mail: usuarioToMail.get(login) || '',
   }));
 
   // Filtrar tabla según los filtros seleccionados
