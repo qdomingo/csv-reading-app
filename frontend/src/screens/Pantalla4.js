@@ -147,15 +147,17 @@ function Pantalla4({ onBack }) {
     console.log('login_licencias generados:', loginLicencias.length);
     console.log('Primeros 10 login_licencias:', loginLicencias.slice(0, 10));
   }
-  // Crear mapa de usuario a tipo de licencia y mail
+  // Crear mapa de usuario a tipo de licencia, mail y empresa
   const usuarioToLicencia = new Map();
   const usuarioToMail = new Map();
+  const usuarioToEmpresa = new Map();
   if (licenciasLoaded && licenciasData.length > 0) {
     licenciasData.forEach(row => {
       const estado = (row.Estado || row.estado || row.ESTADO || '').trim().toLowerCase();
       if (estado === 'asignada') {
         const mail = (row.Mail || row.mail || row.MAIL || '').trim();
         const licencia = (row.Licencia || row.licencia || row.LICENCIA || '').trim();
+        const empresa = (row.Empresa || row.empresa || row.EMPRESA || '').trim();
         if (mail) {
           const usuario = mail.split('@')[0];
           const loginFormateado = usuario ? `${usuario}_indra` : '';
@@ -164,6 +166,9 @@ function Pantalla4({ onBack }) {
               usuarioToLicencia.set(loginFormateado, licencia);
             }
             usuarioToMail.set(loginFormateado, mail);
+            if (empresa) {
+              usuarioToEmpresa.set(loginFormateado, empresa);
+            }
           }
         }
       }
@@ -181,6 +186,7 @@ function Pantalla4({ onBack }) {
     licencias: loginLicencias.includes(login) ? 'YES' : 'NO',
     tipoLicencia: usuarioToLicencia.get(login) || '',
     mail: usuarioToMail.get(login) || '',
+    empresa: usuarioToEmpresa.get(login) || '',
   }));
 
   // Filtrar tabla según los filtros seleccionados
