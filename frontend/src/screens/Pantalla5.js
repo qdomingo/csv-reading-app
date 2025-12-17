@@ -1,6 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import '../App.css';
 
 function Pantalla5({ onBack }) {
@@ -17,6 +18,7 @@ function Pantalla5({ onBack }) {
   const [fechaAltaFilter, setFechaAltaFilter] = useState('');
   const [fechaBajaFilter, setFechaBajaFilter] = useState('');
   const [proyectoFilter, setProyectoFilter] = useState('');
+  const [cobroFilter, setCobroFilter] = useState('');
   const [licenciasUnicas, setLicenciasUnicas] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('Diciembre-25');
   const debounceMail = useRef();
@@ -118,6 +120,65 @@ function Pantalla5({ onBack }) {
     return `${day}/${month}/${year}`;
   };
 
+  // Función auxiliar para determinar si una fila está contabilizada en el mes seleccionado
+  const estaContabilizada = (row) => {
+    const mesMap = {
+      'Enero': 0, 'Febrero': 1, 'Marzo': 2, 'Abril': 3, 'Mayo': 4, 'Junio': 5,
+      'Julio': 6, 'Agosto': 7, 'Septiembre': 8, 'Octubre': 9, 'Noviembre': 10, 'Diciembre': 11
+    };
+    const [mesNombre, yearStr] = selectedMonth.split('-');
+    const mesSeleccionadoNum = mesMap[mesNombre];
+    const yearSeleccionado = 2000 + parseInt(yearStr);
+    const fechaReferencia = new Date(2026, 0, 1);
+    
+    const empresa = (row.empresa || '').trim();
+    const fechaAlta = parseDate(row.fechaAlta);
+    
+    let fechaBaja = fechaReferencia;
+    if (row.fechaBaja && row.fechaBaja.toString().trim() !== '-') {
+      const parsedFechaBaja = parseDate(row.fechaBaja);
+      if (parsedFechaBaja) {
+        fechaBaja = parsedFechaBaja;
+      }
+    }
+    
+    if (!empresa || !fechaAlta) return false;
+    
+    const mesAlta = fechaAlta.getMonth();
+    const yearAlta = fechaAlta.getFullYear();
+    const mesBaja = fechaBaja.getMonth();
+    const yearBaja = fechaBaja.getFullYear();
+    
+    const coincideAlta = (mesAlta === mesSeleccionadoNum && yearAlta === yearSeleccionado);
+    const coincideBaja = (mesBaja === mesSeleccionadoNum && yearBaja === yearSeleccionado);
+    const mesSeleccionadoDate = new Date(yearSeleccionado, mesSeleccionadoNum, 1);
+    const entreRango = fechaAlta <= mesSeleccionadoDate && mesSeleccionadoDate <= fechaBaja;
+    
+    return coincideAlta || coincideBaja || entreRango;
+  };
+
+  const exportarDetalleLicencias = () => {
+    // Preparar datos para exportar (usar filteredData con el campo id incluido)
+    const datosExport = filteredData.map(row => ({
+      ID: row.id || '',
+      Mail: row.mail || '',
+      'Nombre completo': row.nombre || '',
+      Empresa: row.empresa || '',
+      Licencia: row.licencia || '',
+      Estado: row.estado || '',
+      'Fecha alta': row.fechaAlta || '',
+      'Fecha baja': row.fechaBaja || '',
+      Proyecto: row.proyecto || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(datosExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Detalle Licencias');
+    
+    const date = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `detalle_licencias_${selectedMonth}_${date}.xlsx`);
+  };
+
   // Filtros reactivos
   const [filteredData, setFilteredData] = useState([]);
   React.useEffect(() => {
@@ -213,6 +274,16 @@ function Pantalla5({ onBack }) {
     
     if (proyectoFilter) filtered = filtered.filter(row => String(row.proyecto || '').toLowerCase().includes(proyectoFilter.toLowerCase()));
     
+    // Filtro de cobro (Contabilizada)
+    if (cobroFilter) {
+      filtered = filtered.filter(row => {
+        const contabilizada = estaContabilizada(row);
+        if (cobroFilter === 'SI') return contabilizada;
+        if (cobroFilter === 'NO') return !contabilizada;
+        return true;
+      });
+    }
+    
     // Ordenar: fechas válidas primero (más recientes primero), luego nulos/inválidos al final
     filtered.sort((a, b) => {
       const dateA = parseDate(a.fechaAlta);
@@ -224,7 +295,7 @@ function Pantalla5({ onBack }) {
     });
     
     setFilteredData(filtered);
-  }, [data, mailFilter, nombreFilter, empresaFilter, licenciaFilter, estadoFilter, fechaAltaFilter, fechaBajaFilter, proyectoFilter]);
+  }, [data, mailFilter, nombreFilter, empresaFilter, licenciaFilter, estadoFilter, fechaAltaFilter, fechaBajaFilter, proyectoFilter, cobroFilter, selectedMonth]);
 
   // Handlers para los filtros con debounce
   const handleMailFilter = e => {
@@ -282,6 +353,9 @@ function Pantalla5({ onBack }) {
   const handleEstadoFilter = e => {
     setEstadoFilter(e.target.value);
   };
+  const handleCobroFilter = e => {
+    setCobroFilter(e.target.value);
+  };
 
   const limpiarFiltros = () => {
     setMailFilter('');
@@ -292,6 +366,7 @@ function Pantalla5({ onBack }) {
     setFechaAltaFilter('');
     setFechaBajaFilter('');
     setProyectoFilter('');
+    setCobroFilter('');
     // Limpiar inputs de texto
     document.querySelectorAll('input[type="text"]').forEach(input => {
       input.value = '';
@@ -510,7 +585,25 @@ function Pantalla5({ onBack }) {
 
       {data.length > 0 && (
         <div>
-          <h2 style={{ textAlign: 'center', margin: '30px 0 10px 0' }}>Detalle de licencias ({filteredData.length})</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '30px 0 10px 0' }}>
+            <h2 style={{ textAlign: 'center', flex: 1, margin: 0 }}>Detalle de licencias ({filteredData.length})</h2>
+            <button 
+              onClick={exportarDetalleLicencias}
+              style={{ 
+                padding: '10px 24px', 
+                fontSize: 15, 
+                borderRadius: 8, 
+                background: '#2b5876', 
+                color: '#fff', 
+                border: 'none', 
+                fontWeight: 600, 
+                cursor: 'pointer',
+                marginLeft: '12px'
+              }}
+            >
+              Exportar a Excel
+            </button>
+          </div>
           <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '500px', fontSize: '0.8rem' }}>
             <table className="dashboard-table" style={{ tableLayout: 'fixed' }}>
             <thead>
@@ -714,6 +807,32 @@ function Pantalla5({ onBack }) {
                     />
                   </div>
                 </th>
+                <th style={{ minWidth: '95px', maxWidth: '95px', width: '95px', padding: '8px 4px', boxSizing: 'border-box', textAlign: 'center' }}>
+                  Cobro
+                  <div>
+                    <select
+                      value={cobroFilter}
+                      onChange={handleCobroFilter}
+                      style={{
+                        width: '100%',
+                        marginTop: 6,
+                        background: '#23293a',
+                        color: '#e0e6f3',
+                        border: '1px solid #2b5876',
+                        borderRadius: 6,
+                        padding: '4px 6px',
+                        fontSize: '0.8rem',
+                        outline: 'none',
+                        transition: 'border 0.2s',
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      <option value="">Todas</option>
+                      <option value="SI">SI</option>
+                      <option value="NO">NO</option>
+                    </select>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -727,6 +846,9 @@ function Pantalla5({ onBack }) {
                   <td>{formatDate(row.fechaAlta)}</td>
                   <td>{formatDate(row.fechaBaja)}</td>
                   <td>{row.proyecto}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 'bold', color: estaContabilizada(row) ? '#7ed6df' : '#ff6b6b' }}>
+                    {estaContabilizada(row) ? 'SI' : 'NO'}
+                  </td>
                 </tr>
               ))}
             </tbody>
