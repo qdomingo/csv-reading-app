@@ -7,6 +7,7 @@ import Pantalla1 from './screens/Pantalla1';
 import Pantalla2 from './screens/Pantalla2';
 import Pantalla3 from './screens/Pantalla3';
 import Pantalla4 from './screens/Pantalla4';
+import Pantalla5 from './screens/Pantalla5';
 
 function App() {
   const [pantalla, setPantalla] = useState('menu');
@@ -22,6 +23,7 @@ function App() {
       {pantalla === 'pantalla2' && <Pantalla2 onBack={handleBackToMenu} />}
       {pantalla === 'pantalla3' && <Pantalla3 onBack={handleBackToMenu} />}
       {pantalla === 'pantalla4' && <Pantalla4 onBack={handleBackToMenu} />}
+      {pantalla === 'pantalla5' && <Pantalla5 onBack={handleBackToMenu} />}
     </div>
   );
 }
