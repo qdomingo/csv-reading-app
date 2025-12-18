@@ -317,17 +317,23 @@ function Pantalla4({ onBack }) {
               </tr>
               <tr>
                 <td>Stock GitHub</td>
-                <td>{
+                <td style={{
+                  fontWeight: 'bold',
+                  color: numLicenciasAdquiridas && githubLoaded && (Number(numLicenciasAdquiridas) - githubConsumidas) > 0 ? '#4caf50' : '#ff6b6b'
+                }}>{
                   numLicenciasAdquiridas && githubLoaded
-                    ? Math.max(Number(numLicenciasAdquiridas) - githubConsumidas, 0)
+                    ? Number(numLicenciasAdquiridas) - githubConsumidas
                     : '-'
                 }</td>
               </tr>
               <tr>
                 <td>Stock Copilot</td>
-                <td>{
+                <td style={{
+                  fontWeight: 'bold',
+                  color: numLicenciasAdquiridas && copilotLoaded && (Number(numLicenciasAdquiridas) - copilotConsumidas) > 0 ? '#4caf50' : '#ff6b6b'
+                }}>{
                   numLicenciasAdquiridas && copilotLoaded
-                    ? Math.max(Number(numLicenciasAdquiridas) - copilotConsumidas, 0)
+                    ? Number(numLicenciasAdquiridas) - copilotConsumidas
                     : '-'
                 }</td>
               </tr>
