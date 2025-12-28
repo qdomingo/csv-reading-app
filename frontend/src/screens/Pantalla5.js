@@ -120,8 +120,36 @@ function Pantalla5({ onBack }) {
     return `${day}/${month}/${year}`;
   };
 
+  // Filtros reactivos
+  const [filteredData, setFilteredData] = useState([]);
+  
+  // Función auxiliar para deduplicar registros por email, priorizando estado 'Asignada'
+  const obtenerRegistroPorEmail = React.useMemo(() => {
+    const registrosPorEmail = {};
+    
+    filteredData.forEach(row => {
+      const email = (row.mail || '').trim().toLowerCase();
+      if (!email) return;
+      
+      if (!registrosPorEmail[email]) {
+        registrosPorEmail[email] = row;
+      } else {
+        // Si el registro actual está 'Asignada' y el anterior no, usar el actual
+        const estadoActual = (row.estado || '').trim().toLowerCase();
+        const estadoAnterior = (registrosPorEmail[email].estado || '').trim().toLowerCase();
+        
+        if (estadoActual === 'asignada' && estadoAnterior !== 'asignada') {
+          registrosPorEmail[email] = row;
+        }
+        // Si ambos están asignados o ambos cancelados, mantener el primero encontrado
+      }
+    });
+    
+    return registrosPorEmail;
+  }, [filteredData]);
+
   // Función auxiliar para determinar si una fila está contabilizada en el mes seleccionado
-  const estaContabilizada = (row) => {
+  const estaContabilizada = React.useCallback((row) => {
     const mesMap = {
       'Enero': 0, 'Febrero': 1, 'Marzo': 2, 'Abril': 3, 'Mayo': 4, 'Junio': 5,
       'Julio': 6, 'Agosto': 7, 'Septiembre': 8, 'Octubre': 9, 'Noviembre': 10, 'Diciembre': 11
@@ -131,8 +159,15 @@ function Pantalla5({ onBack }) {
     const yearSeleccionado = 2000 + parseInt(yearStr);
     const fechaReferencia = new Date(2026, 0, 1);
     
+    const email = (row.mail || '').trim().toLowerCase();
     const empresa = (row.empresa || '').trim();
     const fechaAlta = parseDate(row.fechaAlta);
+    
+    // Verificar si este es el registro preferido para este email
+    if (email && obtenerRegistroPorEmail[email]) {
+      // Si no es el registro preferido, no se contabiliza
+      if (obtenerRegistroPorEmail[email] !== row) return false;
+    }
     
     let fechaBaja = fechaReferencia;
     if (row.fechaBaja && row.fechaBaja.toString().trim() !== '-') {
@@ -155,7 +190,7 @@ function Pantalla5({ onBack }) {
     const entreRango = fechaAlta <= mesSeleccionadoDate && mesSeleccionadoDate <= fechaBaja;
     
     return coincideAlta || coincideBaja || entreRango;
-  };
+  }, [selectedMonth, obtenerRegistroPorEmail]);
 
   const exportarDetalleLicencias = () => {
     // Preparar datos para exportar (usar filteredData con el campo id incluido)
@@ -178,9 +213,7 @@ function Pantalla5({ onBack }) {
     const date = new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb, `detalle_licencias_${selectedMonth}_${date}.xlsx`);
   };
-
-  // Filtros reactivos
-  const [filteredData, setFilteredData] = useState([]);
+  
   React.useEffect(() => {
     let filtered = data;
     if (mailFilter) filtered = filtered.filter(row => String(row.mail || '').toLowerCase().includes(mailFilter.toLowerCase()));
@@ -295,7 +328,7 @@ function Pantalla5({ onBack }) {
     });
     
     setFilteredData(filtered);
-  }, [data, mailFilter, nombreFilter, empresaFilter, licenciaFilter, estadoFilter, fechaAltaFilter, fechaBajaFilter, proyectoFilter, cobroFilter, selectedMonth]);
+  }, [data, mailFilter, nombreFilter, empresaFilter, licenciaFilter, estadoFilter, fechaAltaFilter, fechaBajaFilter, proyectoFilter, cobroFilter, selectedMonth, estaContabilizada]);
 
   // Handlers para los filtros con debounce
   const handleMailFilter = e => {
@@ -403,7 +436,10 @@ function Pantalla5({ onBack }) {
     
     const empresaLicencias = {};
     
-    filteredData.forEach(row => {
+    // Usar solo los registros preferidos (deduplicados por email)
+    const registrosUnicos = Object.values(obtenerRegistroPorEmail);
+    
+    registrosUnicos.forEach(row => {
       const empresa = (row.empresa || '').trim();
       const licencia = (row.licencia || '').trim().toLowerCase();
       const estado = (row.estado || '').trim().toLowerCase();
