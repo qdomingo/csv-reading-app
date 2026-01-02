@@ -20,7 +20,7 @@ function Pantalla5({ onBack }) {
   const [proyectoFilter, setProyectoFilter] = useState('');
   const [cobroFilter, setCobroFilter] = useState('');
   const [licenciasUnicas, setLicenciasUnicas] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState('Diciembre-25');
+  const [selectedMonth, setSelectedMonth] = useState('Enero-26');
   const debounceMail = useRef();
   const debounceNombre = useRef();
   const debounceEmpresa = useRef();
@@ -515,13 +515,17 @@ function Pantalla5({ onBack }) {
     }).sort((a, b) => b.total - a.total); // Ordenar por total descendente
   }
 
-  // Generar array de meses desde Enero 2024 hasta Diciembre 2025
+  // Generar array de meses desde el mes actual hacia atrás hasta 12 meses (13 meses en total)
   const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const opcionesMeses = [];
-  for (let year = 2024; year <= 2025; year++) {
-    meses.forEach(mes => {
-      opcionesMeses.push(`${mes}-${String(year).slice(-2)}`);
-    });
+  const fechaActual = new Date();
+  
+  // Generar 13 meses desde el mes actual hacia atrás
+  for (let i = 0; i < 13; i++) {
+    const fecha = new Date(fechaActual.getFullYear(), fechaActual.getMonth() - i, 1);
+    const mesIdx = fecha.getMonth();
+    const año = fecha.getFullYear();
+    opcionesMeses.push(`${meses[mesIdx]}-${String(año).slice(-2)}`);
   }
 
   return (
