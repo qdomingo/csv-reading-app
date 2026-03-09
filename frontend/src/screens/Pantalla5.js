@@ -4,6 +4,8 @@ import axios from 'axios';
 import * as XLSX from 'xlsx';
 import '../App.css';
 
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
 function Pantalla5({ onBack }) {
   const [file, setFile] = useState(null);
   const [data, setData] = useState([]);
@@ -20,7 +22,10 @@ function Pantalla5({ onBack }) {
   const [proyectoFilter, setProyectoFilter] = useState('');
   const [cobroFilter, setCobroFilter] = useState('');
   const [licenciasUnicas, setLicenciasUnicas] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState('Enero-26');
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${MESES[now.getMonth()]}-${String(now.getFullYear()).slice(-2)}`;
+  });
   const debounceMail = useRef();
   const debounceNombre = useRef();
   const debounceEmpresa = useRef();
@@ -157,7 +162,7 @@ function Pantalla5({ onBack }) {
     const [mesNombre, yearStr] = selectedMonth.split('-');
     const mesSeleccionadoNum = mesMap[mesNombre];
     const yearSeleccionado = 2000 + parseInt(yearStr);
-    const fechaReferencia = new Date(2026, 0, 1);
+    const fechaReferencia = new Date(9999, 11, 31);
     
     const email = (row.mail || '').trim().toLowerCase();
     const empresa = (row.empresa || '').trim();
@@ -432,7 +437,7 @@ function Pantalla5({ onBack }) {
     const yearSeleccionado = 2000 + parseInt(yearStr);
     
     // Fecha de referencia: un mes después del mes actual (Enero 2026)
-    const fechaReferencia = new Date(2026, 0, 1);
+    const fechaReferencia = new Date(9999, 11, 31);
     
     const empresaLicencias = {};
     
@@ -516,7 +521,6 @@ function Pantalla5({ onBack }) {
   }
 
   // Generar array de meses desde el mes actual hacia atrás hasta 12 meses (13 meses en total)
-  const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const opcionesMeses = [];
   const fechaActual = new Date();
   
@@ -525,7 +529,7 @@ function Pantalla5({ onBack }) {
     const fecha = new Date(fechaActual.getFullYear(), fechaActual.getMonth() - i, 1);
     const mesIdx = fecha.getMonth();
     const año = fecha.getFullYear();
-    opcionesMeses.push(`${meses[mesIdx]}-${String(año).slice(-2)}`);
+    opcionesMeses.push(`${MESES[mesIdx]}-${String(año).slice(-2)}`);
   }
 
   return (
