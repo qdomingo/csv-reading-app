@@ -12,6 +12,44 @@ app.use(express.json());
 
 const upload = multer({ dest: 'uploads/' });
 
+const normalizeHeader = (value) => (
+  typeof value === 'string'
+    ? value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+    : ''
+);
+
+const buildSheetObjects = (rows) => {
+  if (!rows.length) {
+    return [];
+  }
+
+  const headerRow = rows.find((row) => row.some((cell) => String(cell || '').trim() !== ''));
+  if (!headerRow) {
+    return [];
+  }
+
+  const headerIndex = rows.indexOf(headerRow);
+  const headers = headerRow.map((cell, index) => {
+    const value = String(cell || '').trim();
+    return value || `columna_${index + 1}`;
+  });
+
+  return rows
+    .slice(headerIndex + 1)
+    .filter((row) => row.some((cell) => String(cell || '').trim() !== ''))
+    .map((row) => {
+      const record = {};
+      headers.forEach((header, index) => {
+        record[header] = row[index] ?? '';
+      });
+      return record;
+    });
+};
+
 // Endpoint para subir archivo
 app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) {
@@ -34,6 +72,25 @@ app.get('/api/read/:filename', (req, res) => {
   const ext = path.extname(originalname || filename).toLowerCase();
   if (ext === '.xlsx' || ext === '.xls') {
     const workbook = xlsx.readFile(filePath);
+    const rawMode = String(req.query.mode || '').toLowerCase() === 'raw';
+    const requestedSheetName = String(req.query.sheetName || '').trim();
+    const requestedSheetIndex = Number.parseInt(req.query.sheetIndex, 10);
+
+    if (rawMode) {
+      let sheetName = workbook.SheetNames[0];
+
+      if (requestedSheetName && workbook.SheetNames.includes(requestedSheetName)) {
+        sheetName = requestedSheetName;
+      } else if (!Number.isNaN(requestedSheetIndex) && workbook.SheetNames[requestedSheetIndex]) {
+        sheetName = workbook.SheetNames[requestedSheetIndex];
+      }
+
+      const sheet = workbook.Sheets[sheetName];
+      const rows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      const records = buildSheetObjects(rows);
+      return res.json({ type: 'excel', sheetName, data: records });
+    }
+
     // Buscar la hoja 'O-Licencias', si no existe usar la segunda hoja (índice 1)
     let sheetName = workbook.SheetNames[0];
     for (const name of workbook.SheetNames) {
@@ -48,7 +105,7 @@ app.get('/api/read/:filename', (req, res) => {
     }
     const sheet = workbook.Sheets[sheetName];
     const rows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-    const normalize = s => (typeof s === 'string' ? s.toLowerCase().replace(/\s|_/g, '') : '');
+    const normalize = normalizeHeader;
     // Definir los nombres esperados y sus variantes
     const expected = {
       id: ['id', 'código', 'codigo', 'códigoempleado', 'codigoempleado'],

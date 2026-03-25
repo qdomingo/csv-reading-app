@@ -31,6 +31,11 @@ function MenuScreen({ onNavigate }) {
           style={{ marginBottom: 20, padding: '16px 32px', fontSize: 20, borderRadius: 8, background: '#4e4376', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', minWidth: 260 }}
           onClick={() => onNavigate('pantalla5')}
         >Previsión de Cobros</button>
+        <button
+          className="main-action-btn"
+          style={{ marginBottom: 20, padding: '16px 32px', fontSize: 20, borderRadius: 8, background: '#355c3a', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', minWidth: 260 }}
+          onClick={() => onNavigate('pantalla6')}
+        >Check inducidas</button>
       </div>
     </div>
   );
