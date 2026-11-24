@@ -91,72 +91,91 @@ app.get('/api/read/:filename', (req, res) => {
       return res.json({ type: 'excel', sheetName, data: records });
     }
 
-    // Buscar la hoja 'O-Licencias', si no existe usar la segunda hoja (índice 1)
-    let sheetName = workbook.SheetNames[0];
-    for (const name of workbook.SheetNames) {
-      if (name.trim().toLowerCase() === 'o-licencias') {
-        sheetName = name;
-        break;
-      }
-    }
-    // Si no se encontró 'O-Licencias' y hay al menos 2 hojas, usar la segunda
-    if (sheetName === workbook.SheetNames[0] && workbook.SheetNames.length > 1) {
-      sheetName = workbook.SheetNames[1];
-    }
-    const sheet = workbook.Sheets[sheetName];
-    const rows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-    const normalize = normalizeHeader;
-    // Definir los nombres esperados y sus variantes
     const expected = {
-      id: ['id', 'código', 'codigo', 'códigoempleado', 'codigoempleado'],
-      mail: ['mail'],
-      nombre: ['nombrecompleto', 'nombrecompleto'],
-      empresa: ['empresa'],
-      licencia: ['licencia'],
-      estado: ['estado'],
-      fechaAlta: ['fechaalta', 'fechaalta', 'fechadealta', 'fechadealta'],
-      fechaBaja: ['fechabaja', 'fechabaja', 'fechadebaja', 'fechadebaja'],
-      proyecto: ['proyecto', 'proyectos']
+      id: ['id', 'identificador', 'codigoempleado'],
+      mail: ['mail', 'correo', 'email', 'correoelectronico'],
+      nombre: ['nombrecompleto', 'nombre', 'fullname'],
+      empresa: ['cliente', 'empresa', 'company'],
+      codEmpresa: ['codempresa', 'codigoempresa'],
+      licencia: ['licencia', 'license', 'tipolicencia'],
+      estado: ['estado', 'status'],
+      fechaAlta: ['fechaalta', 'fechadealta', 'fechainicio', 'startdate'],
+      fechaBaja: ['fechabaja', 'fechadebaja', 'fechafin', 'enddate'],
+      proyecto: ['proyecto', 'proyectos', 'codproyecto', 'codigoproyecto'],
+      pais: ['pais', 'country'],
+      mercado: ['mercado', 'market'],
+      formacion: ['formacion', 'training'],
+      origen: ['origen', 'origin']
     };
-    // Buscar la fila de cabecera y los índices de cada campo
-    let headerRow = null;
-    let headerIndex = 0;
-    let colIdx = { id: -1, mail: -1, nombre: -1, empresa: -1, licencia: -1, estado: -1, fechaAlta: -1, fechaBaja: -1, proyecto: -1 };
-    for (let i = 0; i < Math.min(10, rows.length); i++) {
-      const row = rows[i];
-      let found = 0;
-      row.forEach((cell, idx) => {
-        for (const key in expected) {
-          if (expected[key].some(e => normalize(cell) === normalize(e))) {
-            colIdx[key] = idx;
-            found++;
-          }
+    const sheetCandidates = workbook.SheetNames.map((name, sheetIndex) => {
+      const sheetRows = xlsx.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '' });
+      let bestHeader = null;
+      for (let rowIndex = 0; rowIndex < Math.min(20, sheetRows.length); rowIndex++) {
+        const row = sheetRows[rowIndex];
+        const matched = new Set();
+        row.forEach((cell) => {
+          const normalized = normalizeHeader(String(cell || ''));
+          Object.entries(expected).forEach(([key, aliases]) => {
+            if (aliases.some((alias) => normalizeHeader(alias) === normalized)) matched.add(key);
+          });
+        });
+        if (!bestHeader || matched.size > bestHeader.score) {
+          bestHeader = { rowIndex, score: matched.size, matched };
         }
-      });
-      if (found > 0) {
-        headerRow = row;
-        headerIndex = i;
-        break;
       }
+      return { name, sheetIndex, rows: sheetRows, ...bestHeader };
+    }).filter((candidate) => candidate.matched && candidate.matched.has('mail'));
+
+    if (!sheetCandidates.length) {
+      return res.status(400).json({ error: 'No se encontró una columna Mail, Correo o Email en el Excel.' });
     }
-    if (colIdx.mail === -1) {
-      console.warn('Excel import: No se encontró la columna Mail. Primeras filas:', rows.slice(0, 10));
-      return res.status(400).json({ error: 'No se encontró la columna Mail en el Excel.' });
-    }
-    // Leer el resto de filas como datos
-    const dataRows = rows.slice(headerIndex + 1);
-    const normalizedResults = dataRows.map(row => ({
-      id: colIdx.id !== -1 ? (row[colIdx.id] || '') : '',
-      mail: colIdx.mail !== -1 ? (row[colIdx.mail] || '') : '',
-      nombre: colIdx.nombre !== -1 ? (row[colIdx.nombre] || '') : '',
-      empresa: colIdx.empresa !== -1 ? (row[colIdx.empresa] || '') : '',
-      licencia: colIdx.licencia !== -1 ? (row[colIdx.licencia] || '') : '',
-      estado: colIdx.estado !== -1 ? (row[colIdx.estado] || '') : '',
-      fechaAlta: colIdx.fechaAlta !== -1 ? (row[colIdx.fechaAlta] || '') : '',
-      fechaBaja: colIdx.fechaBaja !== -1 ? (row[colIdx.fechaBaja] || '') : '',
-      proyecto: colIdx.proyecto !== -1 ? (row[colIdx.proyecto] || '') : ''
-    }));
-    return res.json({ type: 'excel', data: normalizedResults });
+
+    // Preferir la hoja con más columnas reconocidas; en empate, mantener O-Licencias si existe.
+    sheetCandidates.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const aPreferred = a.name.trim().toLowerCase() === 'o-licencias';
+      const bPreferred = b.name.trim().toLowerCase() === 'o-licencias';
+      return Number(bPreferred) - Number(aPreferred) || a.sheetIndex - b.sheetIndex;
+    });
+    const { name: sheetName, rows, rowIndex: headerIndex } = sheetCandidates[0];
+    const headers = rows[headerIndex].map((cell) => normalizeHeader(String(cell || '')));
+    const columns = Object.fromEntries(Object.entries(expected).map(([key, aliases]) => [
+      key,
+      headers.flatMap((header, index) => aliases.some((alias) => normalizeHeader(alias) === header) ? [index] : [])
+    ]));
+    const readCell = (row, key) => {
+      const indexes = columns[key] || [];
+      // Si hay encabezados duplicados (como Licencia), toma el último que tenga contenido.
+      for (const index of [...indexes].reverse()) {
+        const value = row[index];
+        if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+      }
+      return '';
+    };
+    const dataRows = rows.slice(headerIndex + 1).filter((row) => row.some((cell) => String(cell || '').trim() !== ''));
+    const normalizedResults = dataRows.map((row) => ({
+      id: readCell(row, 'id'),
+      mail: readCell(row, 'mail'),
+      nombre: readCell(row, 'nombre'),
+      empresa: readCell(row, 'empresa'),
+      licencia: readCell(row, 'licencia'),
+      estado: readCell(row, 'estado'),
+      fechaAlta: readCell(row, 'fechaAlta'),
+      fechaBaja: readCell(row, 'fechaBaja'),
+      proyecto: readCell(row, 'proyecto'),
+      pais: readCell(row, 'pais'),
+      mercado: readCell(row, 'mercado'),
+      codEmpresa: readCell(row, 'codEmpresa'),
+      formacion: readCell(row, 'formacion'),
+      origen: readCell(row, 'origen')
+    })).filter((record) => Object.values(record).some((value) => String(value || '').trim() !== ''));
+    return res.json({
+      type: 'excel',
+      sheetName,
+      hasDateColumns: columns.fechaAlta.length > 0,
+      sourceColumns: rows[headerIndex].map((header) => String(header || '').trim()).filter(Boolean),
+      data: normalizedResults
+    });
   } else if (ext === '.csv') {
     const results = [];
     fs.createReadStream(filePath)

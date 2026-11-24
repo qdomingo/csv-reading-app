@@ -11,6 +11,7 @@ function Pantalla5({ onBack }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [hasDateColumns, setHasDateColumns] = useState(true);
   // Filtros
   const [mailFilter, setMailFilter] = useState('');
   const [nombreFilter, setNombreFilter] = useState('');
@@ -59,17 +60,18 @@ function Pantalla5({ onBack }) {
       });
       // Leer datos, enviando el nombre original como query param
       const readRes = await axios.get(`/api/read/${uploadRes.data.filename}?originalname=${encodeURIComponent(uploadRes.data.originalname)}`);
-      let rows = readRes.data.data || [];
+      const rows = readRes.data.data || [];
       console.log('Datos recibidos del Excel:', rows.length, 'filas');
       console.log('Primera fila:', rows[0]);
       console.log('Columnas disponibles:', rows[0] ? Object.keys(rows[0]) : []);
       // Los datos ya vienen normalizados del backend
       setData(rows);
+      setHasDateColumns(readRes.data.hasDateColumns !== false);
       // Calcular licencias únicas para el selector
       const licencias = Array.from(new Set(rows.map(r => r.licencia).filter(l => l)));
       setLicenciasUnicas(licencias);
     } catch (err) {
-      setError('Error al subir o procesar el archivo.');
+      setError(err.response?.data?.error || 'Error al subir o procesar el archivo.');
     } finally {
       setLoading(false);
     }
@@ -78,6 +80,11 @@ function Pantalla5({ onBack }) {
   // Función para parsear fecha en formato español (dd/mm/yyyy o variantes)
   const parseDate = (dateStr) => {
     if (!dateStr) return null;
+    if (dateStr instanceof Date) return isNaN(dateStr.getTime()) ? null : dateStr;
+    if (typeof dateStr === 'number' && Number.isFinite(dateStr)) {
+      const excelEpoch = new Date(1899, 11, 30);
+      return new Date(excelEpoch.getTime() + dateStr * 24 * 60 * 60 * 1000);
+    }
     // Convertir a string si no lo es
     const str = String(dateStr).trim();
     if (str === '') return null;
@@ -203,12 +210,17 @@ function Pantalla5({ onBack }) {
       ID: row.id || '',
       Mail: row.mail || '',
       'Nombre completo': row.nombre || '',
-      Empresa: row.empresa || '',
       Licencia: row.licencia || '',
+      Origen: row.origen || '',
+      Empresa: row.empresa || '',
+      País: row.pais || '',
+      Mercado: row.mercado || '',
+      'Código de empresa': row.codEmpresa || '',
       Estado: row.estado || '',
       'Fecha alta': row.fechaAlta || '',
       'Fecha baja': row.fechaBaja || '',
-      Proyecto: row.proyecto || ''
+      'Código de proyecto': row.proyecto || '',
+      Formación: row.formacion || ''
     }));
 
     const ws = XLSX.utils.json_to_sheet(datosExport);
@@ -313,7 +325,7 @@ function Pantalla5({ onBack }) {
     if (proyectoFilter) filtered = filtered.filter(row => String(row.proyecto || '').toLowerCase().includes(proyectoFilter.toLowerCase()));
     
     // Filtro de cobro (Contabilizada)
-    if (cobroFilter) {
+    if (cobroFilter && hasDateColumns) {
       filtered = filtered.filter(row => {
         const contabilizada = estaContabilizada(row);
         if (cobroFilter === 'SI') return contabilizada;
@@ -333,7 +345,7 @@ function Pantalla5({ onBack }) {
     });
     
     setFilteredData(filtered);
-  }, [data, mailFilter, nombreFilter, empresaFilter, licenciaFilter, estadoFilter, fechaAltaFilter, fechaBajaFilter, proyectoFilter, cobroFilter, selectedMonth, estaContabilizada]);
+  }, [data, mailFilter, nombreFilter, empresaFilter, licenciaFilter, estadoFilter, fechaAltaFilter, fechaBajaFilter, proyectoFilter, cobroFilter, selectedMonth, estaContabilizada, hasDateColumns]);
 
   // Handlers para los filtros con debounce
   const handleMailFilter = e => {
@@ -394,6 +406,8 @@ function Pantalla5({ onBack }) {
   const handleCobroFilter = e => {
     setCobroFilter(e.target.value);
   };
+
+  const estadosUnicos = Array.from(new Set(data.map(row => String(row.estado || '').trim()).filter(Boolean)));
 
   const limpiarFiltros = () => {
     setMailFilter('');
@@ -537,6 +551,9 @@ function Pantalla5({ onBack }) {
       <h3 style={{ margin: '18px 0 18px 0', fontWeight: 700, fontSize: 22, color: '#fff', textAlign: 'left' }}>
         Previsión de Cobros
       </h3>
+      <div role="note" style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 8, background: '#23293a', border: '1px solid #2b5876', color: '#e0e6f3' }}>
+        <strong>Formato del Excel de empleados:</strong> se usará la primera pestaña del Excel de empleados activos. El cruce se realizará usando el ID de inducidas frente a <strong>cdemplea</strong>. El Excel debe incluir las columnas <strong>cdemplea</strong>, <strong>dsemplea</strong>, <strong>cdalias</strong> y <strong>cdempcsc</strong>.
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
         <form className="file-upload-form" onSubmit={handleUpload} style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
           <label className="file-upload-label">
@@ -590,7 +607,13 @@ function Pantalla5({ onBack }) {
       
       {error && <div style={{ color: 'red', marginBottom: 10 }}>{error}</div>}
 
-      {data.length > 0 && (
+      {data.length > 0 && !hasDateColumns && (
+        <div role="status" style={{ margin: '0 0 20px', padding: '12px 16px', borderRadius: 8, background: '#493b1e', color: '#ffeaa7' }}>
+          El archivo se ha procesado, pero no incluye una columna de fecha de alta. Se muestra el detalle; el resumen y el cálculo de cobro mensual no están disponibles para esta hoja.
+        </div>
+      )}
+
+      {data.length > 0 && hasDateColumns && (
         <div style={{ marginBottom: 30 }}>
           <h2 style={{ textAlign: 'center', margin: '30px 0 20px 0', color: '#fff' }}>Resumen de Licencias por Empresa ({selectedMonth})</h2>
           <div style={{ overflowX: 'auto' }}>
@@ -700,30 +723,6 @@ function Pantalla5({ onBack }) {
                     />
                   </div>
                 </th>
-                <th style={{ minWidth: '130px', maxWidth: '130px', width: '130px', padding: '8px 4px', boxSizing: 'border-box' }}>
-                  Empresa
-                  <div>
-                    <input
-                      type="text"
-                      value={empresaFilter}
-                      onChange={handleEmpresaFilter}
-                      placeholder="Empresa..."
-                      style={{
-                        width: '100%',
-                        marginTop: 6,
-                        background: '#23293a',
-                        color: '#e0e6f3',
-                        border: '1px solid #2b5876',
-                        borderRadius: 6,
-                        padding: '4px 6px',
-                        fontSize: '0.8rem',
-                        outline: 'none',
-                        transition: 'border 0.2s',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                  </div>
-                </th>
                 <th style={{ minWidth: '140px', maxWidth: '140px', width: '140px', padding: '8px 4px', boxSizing: 'border-box' }}>
                   Licencia
                   <div>
@@ -751,6 +750,34 @@ function Pantalla5({ onBack }) {
                     </select>
                   </div>
                 </th>
+                <th style={{ minWidth: '80px', padding: '8px 4px', boxSizing: 'border-box' }}>Origen</th>
+                <th style={{ minWidth: '130px', maxWidth: '130px', width: '130px', padding: '8px 4px', boxSizing: 'border-box' }}>
+                  Empresa
+                  <div>
+                    <input
+                      type="text"
+                      value={empresaFilter}
+                      onChange={handleEmpresaFilter}
+                      placeholder="Empresa..."
+                      style={{
+                        width: '100%',
+                        marginTop: 6,
+                        background: '#23293a',
+                        color: '#e0e6f3',
+                        border: '1px solid #2b5876',
+                        borderRadius: 6,
+                        padding: '4px 6px',
+                        fontSize: '0.8rem',
+                        outline: 'none',
+                        transition: 'border 0.2s',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </th>
+                <th style={{ minWidth: '75px', padding: '8px 4px', boxSizing: 'border-box' }}>País</th>
+                <th style={{ minWidth: '90px', padding: '8px 4px', boxSizing: 'border-box' }}>Mercado</th>
+                <th style={{ minWidth: '90px', padding: '8px 4px', boxSizing: 'border-box' }}>Cód. Empresa</th>
                 <th style={{ minWidth: '85px', maxWidth: '85px', width: '85px', padding: '8px 4px', boxSizing: 'border-box' }}>
                   Estado
                   <div>
@@ -772,8 +799,9 @@ function Pantalla5({ onBack }) {
                       }}
                     >
                       <option value="">Todos</option>
-                      <option value="Asignada">Asignada</option>
-                      <option value="Cancelada">Cancelada</option>
+                      {estadosUnicos.map((estado, idx) => (
+                        <option key={idx} value={estado}>{estado}</option>
+                      ))}
                     </select>
                   </div>
                 </th>
@@ -851,12 +879,14 @@ function Pantalla5({ onBack }) {
                     />
                   </div>
                 </th>
+                <th style={{ minWidth: '90px', padding: '8px 4px', boxSizing: 'border-box' }}>Formación</th>
                 <th style={{ minWidth: '95px', maxWidth: '95px', width: '95px', padding: '8px 4px', boxSizing: 'border-box', textAlign: 'center' }}>
                   Cobro
                   <div>
                     <select
                       value={cobroFilter}
                       onChange={handleCobroFilter}
+                      disabled={!hasDateColumns}
                       style={{
                         width: '100%',
                         marginTop: 6,
@@ -884,14 +914,19 @@ function Pantalla5({ onBack }) {
                 <tr key={i}>
                   <td style={{ wordBreak: 'break-all', overflowWrap: 'break-word' }}>{row.mail}</td>
                   <td>{row.nombre}</td>
-                  <td>{row.empresa}</td>
                   <td>{row.licencia}</td>
+                  <td>{row.origen}</td>
+                  <td>{row.empresa}</td>
+                  <td>{row.pais}</td>
+                  <td>{row.mercado}</td>
+                  <td>{row.codEmpresa}</td>
                   <td>{row.estado}</td>
                   <td>{formatDate(row.fechaAlta)}</td>
                   <td>{formatDate(row.fechaBaja)}</td>
                   <td>{row.proyecto}</td>
+                  <td>{row.formacion}</td>
                   <td style={{ textAlign: 'center', fontWeight: 'bold', color: estaContabilizada(row) ? '#7ed6df' : '#ff6b6b' }}>
-                    {estaContabilizada(row) ? 'SI' : 'NO'}
+                    {hasDateColumns ? (estaContabilizada(row) ? 'SI' : 'NO') : 'N/D'}
                   </td>
                 </tr>
               ))}

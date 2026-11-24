@@ -37,6 +37,8 @@ function Pantalla6({ onBack }) {
   const [nombreFilter, setNombreFilter] = useState('');
   const [idFilter, setIdFilter] = useState('');
   const [empresaFilter, setEmpresaFilter] = useState('');
+  const [licenciaFilter, setLicenciaFilter] = useState('');
+  const [origenFilter, setOrigenFilter] = useState('');
   const [mercadoFilter, setMercadoFilter] = useState('');
   const [clienteFilter, setClienteFilter] = useState('');
   const [paisFilter, setPaisFilter] = useState('');
@@ -121,6 +123,8 @@ function Pantalla6({ onBack }) {
     const inducedClientColumn = findColumn(inducedSample, ['cliente']);
     const inducedCountryColumn = findColumn(inducedSample, ['pais']);
     const inducedProjectColumn = findColumn(inducedSample, ['codproyecto', 'codigoproyecto', 'proyecto']);
+    const inducedLicenseColumn = findColumn(inducedSample, ['licencia', 'license']);
+    const inducedOriginColumn = findColumn(inducedSample, ['origen', 'origin']);
     const employeesIdColumn = findColumn(employeesSample, ['cdemplea']);
 
     if (!inducedIdColumn || !employeesIdColumn) {
@@ -176,6 +180,8 @@ function Pantalla6({ onBack }) {
           cliente: normalizeCellValue(row[inducedClientColumn]),
           pais: normalizeCellValue(row[inducedCountryColumn]),
           proyecto: projectCode,
+          licencia: normalizeCellValue(row[inducedLicenseColumn]),
+          origen: normalizeCellValue(row[inducedOriginColumn]),
           activo: isActive ? 'SI' : 'NO',
         };
       })
@@ -191,12 +197,14 @@ function Pantalla6({ onBack }) {
     const correoOk = usuarioFilter ? row.correo.toLowerCase().includes(usuarioFilter.toLowerCase()) : true;
     const idOk = idFilter ? row.id.toLowerCase().includes(idFilter.toLowerCase()) : true;
     const empresaOk = empresaFilter ? row.empresa.toLowerCase().includes(empresaFilter.toLowerCase()) : true;
+    const licenciaOk = licenciaFilter ? row.licencia.toLowerCase().includes(licenciaFilter.toLowerCase()) : true;
+    const origenOk = origenFilter ? row.origen.toLowerCase().includes(origenFilter.toLowerCase()) : true;
     const mercadoOk = mercadoFilter ? row.mercado.toLowerCase().includes(mercadoFilter.toLowerCase()) : true;
     const clienteOk = clienteFilter ? row.cliente.toLowerCase().includes(clienteFilter.toLowerCase()) : true;
     const paisOk = paisFilter ? row.pais.toLowerCase().includes(paisFilter.toLowerCase()) : true;
     const proyectoOk = proyectoFilter ? row.proyecto.toLowerCase().includes(proyectoFilter.toLowerCase()) : true;
     const activoOk = activoFilter ? row.activo === activoFilter : true;
-    return nombreOk && correoOk && idOk && empresaOk && mercadoOk && clienteOk && paisOk && proyectoOk && activoOk;
+    return nombreOk && correoOk && idOk && empresaOk && licenciaOk && origenOk && mercadoOk && clienteOk && paisOk && proyectoOk && activoOk;
   });
 
   const resetFilters = () => {
@@ -204,6 +212,8 @@ function Pantalla6({ onBack }) {
     setNombreFilter('');
     setIdFilter('');
     setEmpresaFilter('');
+    setLicenciaFilter('');
+    setOrigenFilter('');
     setMercadoFilter('');
     setClienteFilter('');
     setPaisFilter('');
@@ -217,6 +227,8 @@ function Pantalla6({ onBack }) {
       Correo: row.correo,
       ID: row.id,
       'Cód. Empresa': row.empresa,
+      Licencia: row.licencia,
+      Origen: row.origen,
       Mercado: row.mercado,
       Cliente: row.cliente,
       País: row.pais,
@@ -289,7 +301,7 @@ function Pantalla6({ onBack }) {
         </form>
 
         <div style={{ color: '#b2becd', marginBottom: 24 }}>
-          Se usará la primera pestaña del Excel de empleados activos. El cruce se hace por ID de inducidas frente a cdemplea.
+          Se usará la primera pestaña del Excel de empleados activos. El cruce se realizará comparando el ID de cada registro de inducidas con el campo <strong>cdemplea</strong>. El Excel de empleados debe incluir las columnas <strong>cdemplea</strong>, <strong>dsemplea</strong>, <strong>cdalias</strong> y <strong>cdempcsc</strong>.
         </div>
 
         {error && <div style={{ color: '#ff8a8a', marginBottom: 24 }}>{error}</div>}
@@ -333,7 +345,7 @@ function Pantalla6({ onBack }) {
               </button>
             </div>
             <div style={{ maxHeight: '520px', overflowY: 'auto', overflowX: 'auto', borderRadius: 12, fontSize: '0.85rem' }}>
-              <table className="dashboard-table" style={{ minWidth: 980, background: '#23293a' }}>
+              <table className="dashboard-table" style={{ minWidth: 1180, background: '#23293a' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#23293a', zIndex: 1 }}>
                   <tr>
                     <th style={{ minWidth: 180 }}>
@@ -373,6 +385,26 @@ function Pantalla6({ onBack }) {
                         value={empresaFilter}
                         onChange={(e) => setEmpresaFilter(e.target.value)}
                         placeholder="Empresa..."
+                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </th>
+                    <th style={{ minWidth: 160 }}>
+                      Licencia
+                      <input
+                        type="text"
+                        value={licenciaFilter}
+                        onChange={(e) => setLicenciaFilter(e.target.value)}
+                        placeholder="Licencia..."
+                        style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </th>
+                    <th style={{ minWidth: 120 }}>
+                      Origen
+                      <input
+                        type="text"
+                        value={origenFilter}
+                        onChange={(e) => setOrigenFilter(e.target.value)}
+                        placeholder="Origen..."
                         style={{ display: 'block', marginTop: 8, background: '#23293a', color: '#e0e6f3', border: '1px solid #2b5876', borderRadius: 6, padding: '5px 8px', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
                       />
                     </th>
@@ -437,6 +469,8 @@ function Pantalla6({ onBack }) {
                       <td>{row.correo}</td>
                       <td>{row.id}</td>
                       <td>{row.empresa}</td>
+                      <td>{row.licencia}</td>
+                      <td>{row.origen}</td>
                       <td>{row.mercado}</td>
                       <td>{row.cliente}</td>
                       <td>{row.pais}</td>
